@@ -42,7 +42,7 @@ form.addEventListener('submit', async (e) => {
         localStorage.setItem("auth", JSON.stringify({ email }));
   
         // Redirect to dashboard
-        window.location.href = "public/dashboard.html";
+        window.location.href = "/dashboard.html";
       }
     } catch (err) {
       message.textContent = 'Error connecting to server';
