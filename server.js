@@ -6,10 +6,16 @@ const PORT = 3000;
 
 // Middleware
 app.use(cors({
-  origin: '*'
+  origin: '*',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
 }));
 app.use(express.json());
 app.use(express.static('public'));
+app.use((req, res, next) => {
+  console.log(`📥 ${req.method} request to ${req.url}`);
+  next();
+});
 
 // Connect to SQLite database (creates file if not exists)
 const db = new sqlite3.Database('./users.db', (err) => {
