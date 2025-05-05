@@ -5,6 +5,7 @@ const message = document.getElementById('message');
 const toggleLink = document.getElementById('toggle-link');
 const formTitle = document.getElementById('form-title');
 const toggleText = document.getElementById('toggle-text');
+const backendURL = 'http://127.0.0.1:4040'
 
 let isLogin = true;
 
@@ -26,7 +27,7 @@ form.addEventListener('submit', async (e) => {
     const endpoint = isLogin ? '/login' : '/signup';
   
     try {
-      const res = await fetch(`http://localhost:3000${endpoint}`, {
+      const res = await fetch(`${backendURL}/${isLogin ? 'login' : 'signup'}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
