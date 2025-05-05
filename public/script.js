@@ -5,7 +5,7 @@ const message = document.getElementById('message');
 const toggleLink = document.getElementById('toggle-link');
 const formTitle = document.getElementById('form-title');
 const toggleText = document.getElementById('toggle-text');
-const backendURL = 'https://7e85-161-139-102-162.ngrok-free.app'
+const backendURL = 'https://19a6-161-139-102-162.ngrok-free.app'
 
 let isLogin = true;
 

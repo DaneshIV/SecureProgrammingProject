@@ -6,9 +6,11 @@ const PORT = 3000;
 
 // Middleware
 app.use(cors({
-  origin: '*',
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
+  origin: [
+    'https://secure-programming-project.vercel.app',
+    'https://19a6-161-139-102-162.ngrok-free.app'
+  ],
+  credentials: true
 }));
 app.use(express.json());
 app.use(express.static('public'));
