@@ -63,6 +63,9 @@ app.post('/signup', (req, res) => {
 });
 
 // Start the server
-app.listen(PORT, () => {
+/*app.listen(PORT, () => {
   console.log(`🚀 Server is running at http://localhost:${PORT}`);
 });
+*/
+//Add at the end of the server.js 
+module.exports = app; // Export the app for testing
