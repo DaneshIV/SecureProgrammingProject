@@ -6,10 +6,7 @@ const PORT = 3000;
 
 // Middleware
 app.use(cors({
-  origin: '*', // Allow all origins (for demo purposes only)
-  
-  /*['https://secure-programming-project.vercel.app', 'https://b3d4-2404-160-8170-8d97-9ccd-aaf-9cea-748f.ngrok-free.app'], // both allowed
-  credentials: true*/
+  origin: '*'
 }));
 app.use(express.json());
 app.use(express.static('public'));
