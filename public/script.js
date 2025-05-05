@@ -27,7 +27,7 @@ form.addEventListener('submit', async (e) => {
     const endpoint = isLogin ? '/login' : '/signup';
   
     try {
-      const res = await fetch(`${backendURL}/${isLogin ? 'login' : 'signup'}`, {
+      const res = await fetch(`${backendURL}${endpoint}`, {  // Use the ngrok URL here
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
