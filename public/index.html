@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login / Signup</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      width: 300px;
+      text-align: center;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button.switch {
+      background: #28a745;
+    }
+
+    #message {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    .signup-link {
+      display: block;
+      margin-top: 10px;
+      color: #007bff;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2 id="formTitle">Login</h2>
+  <input type="text" id="email" placeholder="Email" required>
+  <input type="password" id="password" placeholder="Password" required>
+  <button id="submitBtn">Login</button>
+  <span class="signup-link" id="switchBtn">Don't have an account? Sign up</span>
+  <p id="message"></p>
+</div>
+
+<script>
+  const emailInput = document.getElementById('email');
+  const passwordInput = document.getElementById('password');
+  const submitBtn = document.getElementById('submitBtn');
+  const switchBtn = document.getElementById('switchBtn');
+  const message = document.getElementById('message');
+  const formTitle = document.getElementById('formTitle');
+
+  let isLogin = true;
+
+  // Switch between Login and Signup form
+  switchBtn.addEventListener('click', () => {
+    isLogin = !isLogin;
+    formTitle.textContent = isLogin ? 'Login' : 'Signup';
+    submitBtn.textContent = isLogin ? 'Login' : 'Signup';
+    switchBtn.textContent = isLogin ? "Don't have an account? Sign up" : 'Already have an account? Login';
+    message.textContent = '';
+  });
+
+  // Handle form submission (Login or Signup)
+  submitBtn.addEventListener('click', async () => {
+    const email = emailInput.value;
+    const password = passwordInput.value;
+
+    try {
+      const res = await fetch(`http://localhost:3000/${isLogin ? 'login' : 'signup'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+      message.textContent = data.message;
+      message.style.color = res.ok ? 'green' : 'red';
+
+      if (res.ok) {
+        // Redirect to Dashboard if login/signup is successful
+        window.location.href = '/dashboard.html';
+      }
+    } catch (err) {
+      message.textContent = 'Server error';
+      message.style.color = 'red';
+    }
+  });
+</script>
+
+</body>
+</html>

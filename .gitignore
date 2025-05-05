@@ -1,0 +1,6 @@
+#Node.js 
+node_modules/
+.env
+*.db
+.DS_Store
+
