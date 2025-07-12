@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Blind Box Shop</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f9f9f9;
+    }
+
+    /* Topbar */
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background-color: #4A90E2;
+      color: white;
+      padding: 10px 20px;
+    }
+
+    .topbar h1 {
+      font-size: 20px;
+      margin: 0;
+    }
+
+    .profile-container {
+      position: relative;
+    }
+
+    .profile-icon {
+      width: 30px;
+      height: 30px;
+      background-color: white;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .dropdown {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 35px;
+      background-color: white;
+      color: black;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      z-index: 1000;
+    }
+
+    .dropdown a {
+      display: block;
+      padding: 10px 15px;
+      text-decoration: none;
+      color: black;
+      font-size: 14px;
+    }
+
+    .dropdown a:hover {
+      background-color: #f0f0f0;
+    }
+
+    /* Main container */
+    .shop-container {
+      max-width: 800px;
+      margin: 30px auto;
+      text-align: center;
+    }
+
+    .box-grid {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-top: 30px;
+    }
+
+    .box-card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      width: 200px;
+    }
+
+    .box-card h3 {
+      margin: 0 0 10px;
+    }
+
+    .box-card button {
+      margin-top: 10px;
+      background-color: #4A90E2;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .box-card button:hover {
+      background-color: #357ABD;
+    }
+
+    #resultBox {
+      margin-top: 30px;
+      font-size: 18px;
+      color: green;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <h1>Welcome to Blind Box Shopping</h1>
+    <div class="profile-container">
+      <div class="profile-icon" onclick="toggleDropdown()"></div>
+      <div class="dropdown" id="profileDropdown">
+        <a href="#">Settings</a>
+        <a href="#" onclick="logout()">Logout</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shop Section -->
+  <div class="shop-container">
+    <h2>Select a Blind Box</h2>
+    <div class="box-grid">
+      <div class="box-card">
+        <h3>Box A</h3>
+        <p>Fun stationery items</p>
+        <button onclick="purchaseBox('A')">Purchase</button>
+      </div>
+      <div class="box-card">
+        <h3>Box B</h3>
+        <p>Cool gadgets and gifts</p>
+        <button onclick="purchaseBox('B')">Purchase</button>
+      </div>
+      <div class="box-card">
+        <h3>Box C</h3>
+        <p>Premium electronics</p>
+        <button onclick="purchaseBox('C')">Purchase</button>
+      </div>
+    </div>
+
+    <div id="resultBox"></div>
+  </div>
+
+  <!-- Script -->
+  <script>
+    // Toggle dropdown menu
+    function toggleDropdown() {
+      const dropdown = document.getElementById("profileDropdown");
+      dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+    }
+
+    // Close dropdown if clicked outside
+    window.onclick = function(event) {
+      if (!event.target.matches('.profile-icon')) {
+        document.getElementById("profileDropdown").style.display = "none";
+      }
+    };
+
+    // Purchase blind box
+    async function purchaseBox(boxType) {
+      const email = prompt("Enter your email:");
+      if (!email) return;
+
+      try {
+        const res = await fetch("http://localhost:3000/api/purchase", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ email, boxType })
+        });
+
+        const data = await res.json();
+        document.getElementById("resultBox").innerText = data.item
+          ? `🎉 You got: ${data.item}`
+          : `⚠️ Error: ${data.error || "Unknown error"}`;
+      } catch (error) {
+        document.getElementById("resultBox").innerText = "❌ Request failed.";
+      }
+    }
+
+    // Logout function
+    function logout() {
+      // Clear storage or cookies if needed
+      localStorage.clear();
+      window.location.href = "index.html"; // Redirect to login page
+    }
+  </script>
+
+</body>
+</html>
