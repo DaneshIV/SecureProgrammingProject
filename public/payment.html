@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blind Box Payment</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      margin: 0;
+      padding: 0;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+    }
+    
+    .payment-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    
+    .payment-summary {
+      background-color: #f9f9f9;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    
+    .summary-total {
+      font-weight: bold;
+      border-top: 1px solid #ddd;
+      padding-top: 8px;
+      margin-top: 8px;
+    }
+    
+    .form-control {
+      margin-bottom: 15px;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    
+    input, select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+    }
+    
+    .card-details {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 15px;
+    }
+    
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      grid-column: span 2;
+    }
+    
+    button:hover {
+      background-color: #45a049;
+    }
+    
+    .message {
+      padding: 10px;
+      margin-top: 20px;
+      border-radius: 4px;
+      text-align: center;
+    }
+    
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+    
+    .coupon-container {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .coupon-container input {
+      flex-grow: 1;
+    }
+    
+    .coupon-container button {
+      width: auto;
+      grid-column: auto;
+      padding: 10px 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Complete Your Purchase</h1>
+    
+    <!-- Payment Summary Section -->
+    <div class="payment-summary">
+      <h2>Order Summary</h2>
+      <div class="summary-row">
+        <span id="box-name">Blind Box</span>
+        <span id="box-price">$25.00</span>
+      </div>
+      <div class="summary-row" id="discount-row" style="color: green; display: none;">
+        <span>Discount</span>
+        <span id="discount-amount">-$0.00</span>
+      </div>
+      <div class="summary-row summary-total">
+        <span>Total</span>
+        <span id="total-price">$25.00</span>
+      </div>
+      
+      <!-- Hidden fields for manipulation -->
+      <input type="hidden" id="box-type" name="boxType" value="A">
+      <input type="hidden" id="original-price" name="originalPrice" value="25.00">
+    </div>
+    
+    <!-- Coupon Section -->
+    <div style="margin-bottom: 20px; padding: 15px; background-color: #f0f8ff; border-radius: 5px; border: 1px dashed #007bff;">
+      <label for="coupon-code">Have a coupon?</label>
+      <div class="coupon-container">
+        <input type="text" id="coupon-code" placeholder="Enter coupon code">
+        <button id="apply-coupon" style="background-color: #007bff;">Apply</button>
+      </div>
+      <div id="coupon-message" style="margin-top: 10px; font-size: 14px;"></div>
+    </div>
+    
+    <!-- Payment Form -->
+    <form id="payment-form" class="payment-form">
+      <div class="form-control">
+        <label for="cardholder">Cardholder Name</label>
+        <input type="text" id="cardholder" name="cardholder" required>
+      </div>
+      
+      <div class="form-control">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+      
+      <div class="form-control" style="grid-column: span 2;">
+        <label for="card-number">Card Number</label>
+        <input type="text" id="card-number" name="cardNumber" placeholder="1234 5678 9012 3456" maxlength="19" required>
+      </div>
+      
+      <div class="form-control">
+        <label for="expiry">Expiration Date</label>
+        <input type="text" id="expiry" name="expiry" placeholder="MM/YY" maxlength="5" required>
+      </div>
+      
+      <div class="form-control">
+        <label for="cvv">Security Code (CVV)</label>
+        <input type="text" id="cvv" name="cvv" placeholder="123" maxlength="3" required>
+      </div>
+      
+      <button type="submit" id="submit-payment">Complete Payment</button>
+    </form>
+    
+    <div id="payment-message" class="message" style="display: none;"></div>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Get elements
+      const boxNameEl = document.getElementById('box-name');
+      const boxPriceEl = document.getElementById('box-price');
+      const totalPriceEl = document.getElementById('total-price');
+      const boxTypeInput = document.getElementById('box-type');
+      const originalPriceInput = document.getElementById('original-price');
+      const discountRow = document.getElementById('discount-row');
+      const discountAmountEl = document.getElementById('discount-amount');
+      const emailInput = document.getElementById('email');
+      const paymentForm = document.getElementById('payment-form');
+      const paymentMessage = document.getElementById('payment-message');
+      const couponInput = document.getElementById('coupon-code');
+      const couponBtn = document.getElementById('apply-coupon');
+      const couponMessage = document.getElementById('coupon-message');
+      
+      // Vulnerable: Get box type and price from URL parameters
+      const urlParams = new URLSearchParams(window.location.search);
+      const boxType = urlParams.get('box') || 'A';
+      boxTypeInput.value = boxType;
+      
+      // Set box details based on type
+      let boxName, boxPrice;
+      switch(boxType) {
+        case 'A':
+          boxName = 'Basic Blind Box';
+          boxPrice = 25.00;
+          break;
+        case 'B':
+          boxName = 'Standard Blind Box';
+          boxPrice = 50.00;
+          break;
+        case 'C':
+          boxName = 'Premium Blind Box';
+          boxPrice = 75.00;
+          break;
+        default:
+          boxName = 'Custom Blind Box';
+          // Vulnerable: Accepting any price from URL parameter
+          boxPrice = parseFloat(urlParams.get('price')) || 25.00;
+      }
+      
+      // Update the DOM with box details
+      boxNameEl.textContent = boxName;
+      boxPriceEl.textContent = `$${boxPrice.toFixed(2)}`;
+      totalPriceEl.textContent = `$${boxPrice.toFixed(2)}`;
+      originalPriceInput.value = boxPrice.toFixed(2);
+      
+      // Vulnerable: Automatically check for URL discount parameter
+      const urlDiscount = urlParams.get('discount');
+      if (urlDiscount) {
+        applyDiscount(urlDiscount);
+      }
+      
+      // Load user email from localStorage if exists
+      try {
+        const auth = JSON.parse(localStorage.getItem('auth'));
+        if (auth && auth.email) {
+          emailInput.value = auth.email;
+        }
+      } catch (e) {
+        console.error('Error loading auth data', e);
+      }
+      
+      // Apply coupon button handler
+      couponBtn.addEventListener('click', function() {
+        const couponCode = couponInput.value.trim();
+        if (couponCode) {
+          applyDiscount(couponCode);
+        } else {
+          couponMessage.textContent = "Please enter a coupon code";
+          couponMessage.style.color = "#dc3545";
+        }
+      });
+      
+      // Vulnerable: Client-side coupon validation logic
+      function applyDiscount(code) {
+        // Vulnerable: Discount codes hardcoded in client-side JavaScript
+        const coupons = {
+          'WELCOME10': 0.1,    // 10% off
+          'SPECIAL50': 0.5,    // 50% off
+          'FREESHIP': 0.15,    // 15% off (misleading name)
+          'ADMIN100': 1.0,     // 100% off (admin discount)
+          'DEBUG': 1.0         // 100% off (debug discount)
+        };
+        
+        if (coupons[code]) {
+          const discount = boxPrice * coupons[code];
+          const newTotal = boxPrice - discount;
+          
+          // Update UI
+          discountRow.style.display = 'flex';
+          discountAmountEl.textContent = `-$${discount.toFixed(2)}`;
+          totalPriceEl.textContent = `$${newTotal.toFixed(2)}`;
+          
+          // Vulnerable: Store applied discount in localStorage
+          localStorage.setItem('appliedDiscount', code);
+          
+          couponMessage.textContent = "Coupon applied successfully!";
+          couponMessage.style.color = "green";
+        } else {
+          couponMessage.textContent = "Invalid coupon code";
+          couponMessage.style.color = "#dc3545";
+        }
+      }
+      
+      // Payment form submission
+      paymentForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const cardNumber = document.getElementById('card-number').value.replace(/\s/g, '');
+        const expiry = document.getElementById('expiry').value;
+        const cvv = document.getElementById('cvv').value;
+        
+        // Vulnerable: No validation of card details on client-side
+        
+        // Vulnerable: Calculate price client-side
+        const finalPrice = parseFloat(totalPriceEl.textContent.replace('$', ''));
+        
+        // Create payment payload
+        const paymentData = {
+          cardHolder: document.getElementById('cardholder').value,
+          cardNumber: cardNumber,
+          expiry: expiry,
+          cvv: cvv,
+          email: emailInput.value,
+          boxType: boxTypeInput.value,
+          amount: finalPrice,
+          originalPrice: parseFloat(originalPriceInput.value),
+          // Vulnerable: Client-generated transaction ID
+          transactionId: Date.now().toString(36) + Math.random().toString(36).substring(2, 5),
+          // Vulnerable: Including coupon code in request
+          couponCode: localStorage.getItem('appliedDiscount') || '',
+          // Vulnerable: Client-side timestamp
+          timestamp: new Date().toISOString()
+        };
+        
+        // Show processing message
+        paymentMessage.textContent = "Processing your payment...";
+        paymentMessage.className = "message";
+        paymentMessage.style.display = "block";
+        
+        try {
+          const backendURL = 'https://83bc16e00594.ngrok-free.app';
+          const response = await fetch(`${backendURL}/api/process-payment`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            // Vulnerable: Sending full payment details including card data
+            body: JSON.stringify(paymentData)
+          });
+          
+          const result = await response.json();
+          
+          if (response.ok) {
+            // Payment successful
+            paymentMessage.textContent = "Payment successful! Redirecting to your account...";
+            paymentMessage.className = "message success";
+            
+            // Vulnerable: Storing transaction details in localStorage
+            localStorage.setItem('lastTransaction', JSON.stringify({
+              id: paymentData.transactionId,
+              amount: paymentData.amount,
+              boxType: paymentData.boxType,
+              date: new Date().toISOString()
+            }));
+            
+            // Redirect after delay
+            setTimeout(() => {
+              window.location.href = "dashboard.html";
+            }, 2000);
+          } else {
+            // Payment failed
+            paymentMessage.textContent = result.error || "Payment failed. Please try again.";
+            paymentMessage.className = "message error";
+          }
+        } catch (error) {
+          console.error("Payment error:", error);
+          
+          // Vulnerable: For demo purposes, allow offline payments to go through
+          paymentMessage.textContent = "Network issue, but payment recorded locally. Redirecting...";
+          paymentMessage.className = "message success";
+          
+          // Store transaction locally anyway
+          localStorage.setItem('lastTransaction', JSON.stringify({
+            id: paymentData.transactionId,
+            amount: paymentData.amount,
+            boxType: paymentData.boxType,
+            date: new Date().toISOString(),
+            offline: true
+          }));
+          
+          setTimeout(() => {
+            window.location.href = "dashboard.html";
+          }, 2000);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

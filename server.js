@@ -66,24 +66,8 @@ app.post('/login', (req, res) => {
     }
   });
 });
-
 // Insecure signup (vulnerable to SQL injection)
-app.post('/signup', (req, res) => {
-  const { email, password } = req.body;
 
-  // Build and log the raw SQL string
-  const query = `INSERT INTO users (email, password) VALUES ('${email}', '${password}')`;
-  console.log(`🔎 Executing SQL: ${query}`);
-
-  // Execute it directly
-  db.run(query, function(err) {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ message: 'Signup failed' });
-    }
-    res.json({ message: 'Signup successful', userId: this.lastID });
-  });
-});
 
 // Signup route (parameterized query — safe)
 app.post('/signup', (req, res) => {
@@ -134,6 +118,133 @@ app.post('/api/purchase', (req, res) => {
       return res.status(500).json({ error: 'Purchase failed' });
     }
     res.json({ item: randomItem });
+  });
+});
+
+// Create payments table with intentionally vulnerable design
+db.run(`
+  CREATE TABLE IF NOT EXISTS payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    transaction_id TEXT,
+    email TEXT,
+    card_holder TEXT,
+    card_number TEXT,       /* Vulnerable: Storing full card numbers */
+    expiry TEXT,
+    cvv TEXT,               /* Vulnerable: Storing CVV */
+    box_type TEXT,
+    amount REAL,
+    original_price REAL,
+    coupon_code TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+// Vulnerable payment processing endpoint
+app.post('/api/process-payment', (req, res) => {
+  const {
+    cardHolder,
+    cardNumber,
+    expiry,
+    cvv,
+    email,
+    boxType,
+    amount,
+    originalPrice,
+    transactionId,
+    couponCode,
+    timestamp
+  } = req.body;
+  
+  console.log(`💳 Processing payment of $${amount} for ${email}`);
+
+  // Vulnerable: No validation of payment details
+  // Vulnerable: Using string interpolation in SQL query (SQL injection risk)
+  const query = `
+    INSERT INTO payments (
+      transaction_id, email, card_holder, card_number, expiry, cvv,
+      box_type, amount, original_price, coupon_code
+    ) VALUES (
+      '${transactionId}',
+      '${email}',
+      '${cardHolder}',
+      '${cardNumber}',
+      '${expiry}',
+      '${cvv}',
+      '${boxType}',
+      ${amount},
+      ${originalPrice},
+      '${couponCode}'
+    )
+  `;
+
+  console.log(`🔍 Executing SQL: ${query}`);
+  
+  db.run(query, function(err) {
+    if (err) {
+      console.error('💥 Payment error:', err);
+      return res.status(500).json({ error: 'Payment processing failed' });
+    }
+    
+    // Process the blind box item
+    const blindBoxItems = {
+      A: ['Sticker', 'Keychain', 'Pen'],
+      B: ['Notebook', 'T-Shirt', 'Mug'],
+      C: ['Power Bank', 'Bluetooth Speaker', 'Wireless Earbuds']
+    };
+    
+    const items = blindBoxItems[boxType] || blindBoxItems.A;
+    const randomItem = items[Math.floor(Math.random() * items.length)];
+    
+    // Vulnerable: Using string interpolation in SQL again
+    const purchaseQuery = `
+      INSERT INTO purchases (email, boxType, item)
+      VALUES ('${email}', '${boxType}', '${randomItem}')
+    `;
+    
+    db.run(purchaseQuery, (err) => {
+      if (err) {
+        console.error('Purchase record error:', err);
+        // Continue despite the error - vulnerable behavior
+      }
+      
+      // Success response with excessive information
+      res.json({
+        success: true,
+        message: 'Payment processed successfully',
+        transactionId: transactionId,
+        paymentId: this.lastID,
+        item: randomItem,
+        // Vulnerable: Returning partial card details
+        cardLastFour: cardNumber.slice(-4),
+        timestamp: new Date().toISOString()
+      });
+    });
+  });
+});
+
+// Vulnerable payment history endpoint (no proper authentication)
+app.get('/api/payment-history', (req, res) => {
+  const { email } = req.query;
+  
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+  
+  // Vulnerable: SQL injection possible with email parameter
+  const query = `
+    SELECT * FROM payments 
+    WHERE email = '${email}'
+    ORDER BY created_at DESC
+  `;
+  
+  db.all(query, (err, rows) => {
+    if (err) {
+      console.error('Payment history error:', err);
+      return res.status(500).json({ error: 'Failed to retrieve payment history' });
+    }
+    
+    // Vulnerable: Returning all data including sensitive card details
+    res.json(rows);
   });
 });
 

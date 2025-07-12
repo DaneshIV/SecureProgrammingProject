@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment History</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+      margin: 0;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+    }
+    
+    .payment-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .payment-table th, .payment-table td {
+      border: 1px solid #ddd;
+      padding: 12px;
+      text-align: left;
+    }
+    
+    .payment-table th {
+      background-color: #f2f2f2;
+    }
+    
+    .payment-table tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    
+    .payment-table tr:hover {
+      background-color: #f0f0f0;
+    }
+    
+    .back-button {
+      background-color: #6c757d;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    
+    .message {
+      padding: 10px;
+      margin-top: 20px;
+      text-align: center;
+      border-radius: 4px;
+    }
+    
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Payment History</h1>
+    
+    <table class="payment-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Box Type</th>
+          <th>Amount</th>
+          <th>Payment Method</th>
+          <th>Transaction ID</th>
+        </tr>
+      </thead>
+      <tbody id="payment-history">
+        <!-- Payment history will be loaded here -->
+        <tr>
+          <td colspan="5" style="text-align: center;">Loading payment history...</td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <div id="message" class="message" style="display: none;"></div>
+    
+    <button class="back-button" onclick="window.location.href='dashboard.html'">Back to Dashboard</button>
+  </div>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', async function() {
+      const historyTableBody = document.getElementById('payment-history');
+      const messageDiv = document.getElementById('message');
+      
+      try {
+        // Get user email from localStorage (vulnerable)
+        const auth = JSON.parse(localStorage.getItem('auth'));
+        if (!auth || !auth.email) {
+          throw new Error('No user logged in');
+        }
+        
+        // Vulnerable: Using email from localStorage without verification
+        const email = auth.email;
+        
+        // Vulnerable: Direct API call with email as a query parameter
+        const backendURL = 'https://83bc16e00594.ngrok-free.app';
+        const response = await fetch(`${backendURL}/api/payment-history?email=${email}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch payment history');
+        }
+        
+        const payments = await response.json();
+        
+        if (payments.length === 0) {
+          historyTableBody.innerHTML = `
+            <tr>
+              <td colspan="5" style="text-align: center;">No payment history found</td>
+            </tr>
+          `;
+          return;
+        }
+        
+        // Generate table rows
+        historyTableBody.innerHTML = payments.map(payment => `
+          <tr>
+            <td>${new Date(payment.created_at).toLocaleString()}</td>
+            <td>${payment.box_type}</td>
+            <td>$${payment.amount.toFixed(2)}</td>
+            <td>Card ending in ${payment.card_number.slice(-4)}</td>
+            <td>${payment.transaction_id}</td>
+          </tr>
+        `).join('');
+        
+      } catch (error) {
+        console.error('Error loading payment history:', error);
+        
+        // Check if there's a last transaction in localStorage (vulnerable fallback)
+        const lastTx = localStorage.getItem('lastTransaction');
+        if (lastTx) {
+          try {
+            const tx = JSON.parse(lastTx);
+            historyTableBody.innerHTML = `
+              <tr>
+                <td>${new Date(tx.date).toLocaleString()}</td>
+                <td>${tx.boxType}</td>
+                <td>$${tx.amount.toFixed(2)}</td>
+                <td>Local transaction</td>
+                <td>${tx.id}</td>
+              </tr>
+            `;
+            
+            messageDiv.textContent = "Server unavailable. Showing local transaction data only.";
+            messageDiv.className = "message error";
+            messageDiv.style.display = "block";
+            
+          } catch (e) {
+            historyTableBody.innerHTML = `
+              <tr>
+                <td colspan="5" style="text-align: center;">Error loading payment history</td>
+              </tr>
+            `;
+          }
+        } else {
+          historyTableBody.innerHTML = `
+            <tr>
+              <td colspan="5" style="text-align: center;">Error loading payment history</td>
+            </tr>
+          `;
+        }
+      }
+    });
+  </script>
+</body>
+</html>

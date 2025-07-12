@@ -165,26 +165,9 @@
     };
 
     // Purchase blind box
-    async function purchaseBox(boxType) {
-      const email = prompt("Enter your email:");
-      if (!email) return;
-
-      try {
-        const res = await fetch("http://localhost:3000/api/purchase", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ email, boxType })
-        });
-
-        const data = await res.json();
-        document.getElementById("resultBox").innerText = data.item
-          ? `🎉 You got: ${data.item}`
-          : `⚠️ Error: ${data.error || "Unknown error"}`;
-      } catch (error) {
-        document.getElementById("resultBox").innerText = "❌ Request failed.";
-      }
+    function purchaseBox(boxType) {
+      // Instead of direct API call, redirect to payment page
+      window.location.href = `payment.html?box=${boxType}`;
     }
 
     // Logout function
