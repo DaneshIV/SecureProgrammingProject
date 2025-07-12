@@ -67,6 +67,24 @@ app.post('/login', (req, res) => {
   });
 });
 
+// Insecure signup (vulnerable to SQL injection)
+app.post('/signup', (req, res) => {
+  const { email, password } = req.body;
+
+  // Build and log the raw SQL string
+  const query = `INSERT INTO users (email, password) VALUES ('${email}', '${password}')`;
+  console.log(`🔎 Executing SQL: ${query}`);
+
+  // Execute it directly
+  db.run(query, function(err) {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: 'Signup failed' });
+    }
+    res.json({ message: 'Signup successful', userId: this.lastID });
+  });
+});
+
 // Signup route (parameterized query — safe)
 app.post('/signup', (req, res) => {
   const { email, password } = req.body;
