@@ -8,7 +8,7 @@ const PORT = 3000;
 app.use(cors({
   origin: [
     'https://secure-programming-project.vercel.app',
-    'https://6f71e2514bce.ngrok-free.app',
+    'https://83bc16e00594.ngrok-free.app',
   ],
   credentials: true
 }));
