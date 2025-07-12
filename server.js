@@ -38,7 +38,7 @@ const db = new sqlite3.Database('./users.db', err => {
   console.log('✅ Connected to SQLite database');
 });
 
-// Create the users table if it doesn't exist
+// Users table
 db.run(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,7 +47,7 @@ db.run(`
   )
 `);
 
-// Insecure login route (vulnerable to SQL injection)
+// Insecure login (vulnerable to SQL injection)
 app.post('/login', (req, res) => {
   const { email, password } = req.body;
   const query = `SELECT * FROM users WHERE email = '${email}' AND password = '${password}'`;
@@ -80,9 +80,48 @@ app.post('/signup', (req, res) => {
   });
 });
 
-// Start the server, listening on all network interfaces
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server is running at http://0.0.0.0:${PORT}`);
+// Blind box database (optional)
+db.run(`
+  CREATE TABLE IF NOT EXISTS purchases (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    boxType TEXT NOT NULL,
+    item TEXT NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )
+`);
+
+// Vulnerable blind box API (no input validation, no auth)
+app.post('/api/purchase', (req, res) => {
+  const { email, boxType } = req.body;
+
+  // Insecure: Blind box logic fully exposed
+  const blindBoxItems = {
+    A: ['Sticker', 'Keychain', 'Pen'],
+    B: ['Notebook', 'T-Shirt', 'Mug'],
+    C: ['Power Bank', 'Bluetooth Speaker', 'Wireless Earbuds']
+  };
+
+  const items = blindBoxItems[boxType];
+  if (!items) return res.status(400).json({ error: 'Invalid box type' });
+
+  const randomItem = items[Math.floor(Math.random() * items.length)];
+
+  // Insecure: No parameterized query
+  const insertQuery = `INSERT INTO purchases (email, boxType, item) VALUES ('${email}', '${boxType}', '${randomItem}')`;
+  console.log(`💥 Inserting into DB: ${insertQuery}`);
+  db.run(insertQuery, (err) => {
+    if (err) {
+      console.error('Insert failed:', err);
+      return res.status(500).json({ error: 'Purchase failed' });
+    }
+    res.json({ item: randomItem });
+  });
+});
+
+// Server start
+app.listen(PORT, () => {
+  console.log(`🚨 Vulnerable server running at http://localhost:${PORT}`);
 });
 
 module.exports = app; // for testing
