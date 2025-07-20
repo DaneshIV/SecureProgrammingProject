@@ -209,12 +209,42 @@
         // Try with multiple fallback options
         let response;
         let success = false;
+        let responseText = '';
         
         try {
           // First try with config URL
           console.log('Trying with configured URL:', fullUrl);
-          response = await fetch(fullUrl);
+          response = await fetch(fullUrl, {
+            mode: 'cors',
+            credentials: 'include',
+            headers: {
+              'Accept': 'application/json',
+              'Origin': window.location.origin
+            }
+          });
           success = response.ok;
+          
+          // Log the response details for debugging
+          const contentType = response.headers.get('content-type');
+          console.log('Response status:', response.status);
+          console.log('Response content-type:', contentType);
+          
+          // Store response text for debugging
+          responseText = await response.text();
+          console.log('Response preview:', responseText.substring(0, 100) + '...');
+          
+          // If we got text but it's not valid JSON, this is an error
+          if (!contentType || !contentType.includes('application/json')) {
+            success = false;
+            throw new Error('Received non-JSON response: ' + responseText.substring(0, 100));
+          }
+          
+          // Reset response to the beginning (after reading text)
+          response = new Response(responseText, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers
+          });
         } catch (e) {
           console.log('First attempt failed:', e);
         }
@@ -224,8 +254,26 @@
           try {
             const locationUrl = `${window.location.origin}/api/payment-history?email=${email}`;
             console.log('Trying with location origin:', locationUrl);
-            response = await fetch(locationUrl);
+            response = await fetch(locationUrl, {
+              mode: 'cors',
+              credentials: 'include',
+              headers: {
+                'Accept': 'application/json',
+                'Origin': window.location.origin
+              }
+            });
             success = response.ok;
+            responseText = await response.text();
+            console.log('Second attempt response:', responseText.substring(0, 100));
+            
+            // If successful, reset response to beginning
+            if (success) {
+              response = new Response(responseText, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers
+              });
+            }
           } catch (e) {
             console.log('Second attempt failed:', e);
           }
@@ -236,8 +284,25 @@
           try {
             const relativeUrl = `/api/payment-history?email=${email}`;
             console.log('Trying with relative path:', relativeUrl);
-            response = await fetch(relativeUrl);
+            response = await fetch(relativeUrl, {
+              mode: 'cors',
+              credentials: 'include',
+              headers: {
+                'Accept': 'application/json'
+              }
+            });
             success = response.ok;
+            responseText = await response.text();
+            console.log('Third attempt response:', responseText.substring(0, 100));
+            
+            // If successful, reset response to beginning
+            if (success) {
+              response = new Response(responseText, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers
+              });
+            }
           } catch (e) {
             console.log('Third attempt failed:', e);
           }
@@ -245,10 +310,17 @@
         
         if (!success || !response.ok) {
           console.error('All API attempts failed');
-          throw new Error(`Failed to fetch payment history after multiple attempts`);
+          throw new Error(`Failed to fetch payment history: ${responseText.substring(0, 100)}`);
         }
         
-        const payments = await response.json();
+        let payments;
+        try {
+          payments = JSON.parse(responseText);
+          console.log('Successfully parsed JSON response');
+        } catch (e) {
+          console.error('JSON parsing error:', e);
+          throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}`);
+        }
         
         if (payments.length === 0) {
           historyTableBody.innerHTML = `

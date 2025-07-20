@@ -5,17 +5,21 @@ const sqlite3 = require('sqlite3').verbose();
 const app = express();
 const PORT = 3000;
 
-// CORS configuration - More flexible for development and deployment
+// CORS configuration - Very permissive for demonstration purposes (VULNERABLE)
 const corsOptions = {
   origin: function(origin, callback) {
     // Allow requests with no origin (like mobile apps, curl)
     if(!origin) return callback(null, true);
     
-    // Allow localhost and specific origins
+    // Since this is a vulnerable demo app, we'll allow all origins
+    // This is intentionally insecure for demonstration purposes
+    callback(null, true);
+    
+    // For reference, these were the allowed origins:
     const allowedOrigins = [
       'https://secure-programming-project.vercel.app',
       'http://secure-programming-project.vercel.app',
-      'http://localhost:3000',
+      'http://localhost:3000', 
       'https://83bc16e00594.ngrok-free.app',  // Your specific ngrok URL
       /\.ngrok-free\.app$/,  // Allow any ngrok subdomain
       /\.vercel\.app$/       // Allow any vercel app subdomain
@@ -36,8 +40,10 @@ const corsOptions = {
     }
   },
   methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type'],
-  credentials: true
+  allowedHeaders: ['Content-Type', 'Accept', 'Origin', 'Authorization'],
+  exposedHeaders: ['Content-Length', 'X-Requested-With'],
+  credentials: true,
+  maxAge: 86400 // 24 hours
 };
 
 app.use(cors(corsOptions));
