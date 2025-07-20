@@ -223,211 +223,88 @@
       }
     }
     
-    // Update debug panel with current state - Enhanced with more diagnostic info
+    // Update debug panel with current state
     function updateDebugInfo() {
       const debugPanel = document.getElementById('debug-panel');
-      
-      // Gather auth data from all storage mechanisms
-      const localStorageAuth = localStorage.getItem('auth') || 'Not found';
-      const sessionStorageAuth = sessionStorage.getItem('auth') || 'Not found';
-      
-      // Check cookies
-      let cookieAuth = 'Not found';
-      const cookies = document.cookie.split(';');
-      for (const cookie of cookies) {
-        const [name, value] = cookie.trim().split('=');
-        if (name === 'user_email') {
-          cookieAuth = value;
-          break;
-        }
-      }
-
-      // Determine the actual API URL that will be used
-      let effectiveApiUrl = window.APP_CONFIG.API_URL;
-      if (!effectiveApiUrl && window.location.hostname.includes('vercel.app')) {
-        effectiveApiUrl = 'Using Vercel API proxy';
-      } else if (!effectiveApiUrl) {
-        effectiveApiUrl = 'https://83bc16e00594.ngrok-free.app';
-      }
+      const authData = localStorage.getItem('auth') || 'Not found';
       
       debugPanel.innerHTML = `
         <h4>Debug Information</h4>
         <p><strong>Environment:</strong> ${window.APP_CONFIG.ENVIRONMENT}</p>
-        <p><strong>Config API URL:</strong> ${window.APP_CONFIG.API_URL || 'Not set'}</p>
-        <p><strong>Effective API URL:</strong> ${effectiveApiUrl}</p>
+        <p><strong>API URL:</strong> ${window.APP_CONFIG.API_URL || 'Using relative paths'}</p>
         <p><strong>Host:</strong> ${window.location.hostname}</p>
-        <p><strong>Origin:</strong> ${window.location.origin}</p>
-        <p><strong>localStorage Auth:</strong> ${localStorageAuth}</p>
-        <p><strong>sessionStorage Auth:</strong> ${sessionStorageAuth}</p>
-        <p><strong>Cookie Auth:</strong> ${cookieAuth}</p>
+        <p><strong>Auth Data:</strong> ${authData}</p>
         <p><strong>localStorage keys:</strong> ${Object.keys(localStorage).join(', ')}</p>
-        <p><button onclick="clearAuth()">Clear Auth</button> <button onclick="testDirectAPI()">Test API Directly</button> <button onclick="testVercelAPI()">Test Vercel Proxy</button></p>
+        <p><button onclick="clearAuth()">Clear Auth</button> <button onclick="testDirectAPI()">Test API Directly</button></p>
       `;
     }
     
-    // Clear authentication - Enhanced version to clear all storage mechanisms
+    // Clear authentication
     function clearAuth() {
       localStorage.removeItem('auth');
-      localStorage.removeItem('user_email');
-      sessionStorage.removeItem('auth');
-      document.cookie = "user_email=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-      alert('Authentication cleared from all storage. Will reload the page.');
+      alert('Authentication cleared. Will reload the page.');
       location.reload();
     }
     
-    // Test API directly with enhanced diagnostics
+    // Test API directly
     async function testDirectAPI() {
       const debugPanel = document.getElementById('debug-panel');
-      const ngrokUrl = 'https://83bc16e00594.ngrok-free.app';
-      
-      debugPanel.innerHTML += `<p>Testing direct API call to ngrok URL: ${ngrokUrl}...</p>`;
+      debugPanel.innerHTML += '<p>Testing direct API call to ngrok URL...</p>';
       
       try {
-        const startTime = performance.now();
-        const response = await fetch(`${ngrokUrl}/api/cors-test`, {
-          mode: 'cors',
-          credentials: 'include'
-        });
-        const endTime = performance.now();
-        const responseTime = Math.round(endTime - startTime);
-        
-        if (response.ok) {
-          const data = await response.json();
-          debugPanel.innerHTML += `
-            <p style="color: green;">✓ API test successful (${responseTime}ms)</p>
-            <p><strong>Status:</strong> ${response.status}</p>
-            <p><strong>Response:</strong> ${JSON.stringify(data)}</p>
-          `;
-          
-          // Also test a sample payment history endpoint
-          debugPanel.innerHTML += `<p>Testing payment history endpoint...</p>`;
-          try {
-            const testEmail = 'test@example.com';
-            const historyResponse = await fetch(`${ngrokUrl}/api/payment-history?email=${testEmail}`, {
-              mode: 'cors',
-              credentials: 'include'
-            });
-            
-            if (historyResponse.ok) {
-              const historyData = await historyResponse.json();
-              const recordCount = historyData.length;
-              debugPanel.innerHTML += `
-                <p style="color: green;">✓ Payment history test successful</p>
-                <p><strong>Records found:</strong> ${recordCount}</p>
-              `;
-            } else {
-              debugPanel.innerHTML += `<p style="color: red;">✗ Payment history test failed with status: ${historyResponse.status}</p>`;
-            }
-          } catch (historyError) {
-            debugPanel.innerHTML += `<p style="color: red;">✗ Payment history test error: ${historyError.message}</p>`;
-          }
-        } else {
-          debugPanel.innerHTML += `
-            <p style="color: red;">✗ API test returned error status: ${response.status}</p>
-            <p><strong>Status text:</strong> ${response.statusText}</p>
-          `;
-        }
+        const response = await fetch('https://83bc16e00594.ngrok-free.app/api/cors-test');
+        const data = await response.json();
+        debugPanel.innerHTML += `<p style="color: green;">API test successful: ${JSON.stringify(data)}</p>`;
       } catch (error) {
-        debugPanel.innerHTML += `
-          <p style="color: red;">✗ API test failed: ${error.message}</p>
-          <p>This might indicate that the ngrok tunnel is down or has changed.</p>
-          <p>If using a new tunnel, update the URLs in config.js and vercel.json.</p>
-        `;
+        debugPanel.innerHTML += `<p style="color: red;">API test failed: ${error.message}</p>`;
       }
     }
     
-    // Test Vercel API proxy
-    async function testVercelAPI() {
-      const debugPanel = document.getElementById('debug-panel');
-      const hostname = window.location.hostname;
-      
-      // Detect if we're on Vercel
-      if (hostname.includes('vercel.app') || hostname.includes('localhost')) {
-        const url = `${window.location.origin}/api/cors-test`;
-        debugPanel.innerHTML += `<p>Testing Vercel API proxy: ${url}...</p>`;
-        
-        try {
-          const response = await fetch(url, {
-            mode: 'cors',
-            credentials: 'include'
-          });
-          
-          if (response.ok) {
-            const data = await response.json();
-            debugPanel.innerHTML += `<p style="color: green;">Vercel API proxy test successful: ${JSON.stringify(data)}</p>`;
-          } else {
-            debugPanel.innerHTML += `<p style="color: red;">Vercel API proxy returned status: ${response.status}</p>`;
-          }
-        } catch (error) {
-          debugPanel.innerHTML += `<p style="color: red;">Vercel API proxy test failed: ${error.message}</p>`;
-        }
-      } else {
-        debugPanel.innerHTML += `<p style="color: orange;">Not running on Vercel, test skipped</p>`;
-      }
-    }
-    
-    // Check API status - Enhanced to handle different environments
+    // Check API status
     async function checkAPIStatus() {
       const statusIndicator = document.getElementById('api-status');
       const statusText = document.getElementById('api-status-text');
       
-      // Try different API endpoints in order of preference
-      const apiEndpoints = [];
-      
-      // 1. If we have a configured URL, use it first
-      if (window.APP_CONFIG.API_URL) {
-        apiEndpoints.push({
-          name: "Config URL",
-          url: `${window.APP_CONFIG.API_URL}/api/cors-test`
+      try {
+        // Try direct ngrok URL first for best reliability
+        const response = await fetch('https://83bc16e00594.ngrok-free.app/api/cors-test', {
+          mode: 'cors',
+          credentials: 'include'
         });
-      }
-      
-      // 2. Always try the direct ngrok URL for reliability
-      apiEndpoints.push({
-        name: "Direct ngrok",
-        url: "https://83bc16e00594.ngrok-free.app/api/cors-test"
-      });
-      
-      // 3. If on Vercel, try the proxy
-      if (window.location.hostname.includes('vercel.app')) {
-        apiEndpoints.push({
-          name: "Vercel proxy",
-          url: `${window.location.origin}/api/cors-test`
-        });
-      }
-      
-      // 4. Try local if in local environment
-      if (window.APP_CONFIG.ENVIRONMENT === "local" || window.location.hostname === "localhost") {
-        apiEndpoints.push({
-          name: "Local API",
-          url: "http://localhost:3000/api/cors-test"
-        });
-      }
-      
-      // Try each endpoint
-      for (const endpoint of apiEndpoints) {
-        try {
-          console.log(`Trying ${endpoint.name}: ${endpoint.url}`);
-          const response = await fetch(endpoint.url, {
-            mode: 'cors',
-            credentials: 'include'
-          });
-          
-          if (response.ok) {
-            statusIndicator.className = 'status-indicator status-online';
-            statusText.textContent = `API connected (via ${endpoint.name})`;
-            console.log(`API connection successful via ${endpoint.name}`);
-            return true;
-          }
-        } catch (error) {
-          console.warn(`${endpoint.name} API check failed:`, error);
+        
+        if (response.ok) {
+          statusIndicator.className = 'status-indicator status-online';
+          statusText.textContent = 'API connected';
+          return true;
         }
+      } catch (error) {
+        console.warn('Direct API check failed:', error);
+      }
+      
+      // If direct check failed, try through config
+      try {
+        const backendURL = window.APP_CONFIG.API_URL || '';
+        if (!backendURL) {
+          throw new Error('No API URL configured');
+        }
+        
+        const response = await fetch(`${backendURL}/api/cors-test`, {
+          mode: 'cors',
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          statusIndicator.className = 'status-indicator status-online';
+          statusText.textContent = 'API connected';
+          return true;
+        }
+      } catch (error) {
+        console.warn('Config API check failed:', error);
       }
       
       // All checks failed
       statusIndicator.className = 'status-indicator status-offline';
       statusText.textContent = 'API disconnected';
-      console.error('All API connection attempts failed');
       return false;
     }
     
@@ -544,41 +421,13 @@
         // Always hide the login div if we have an email
         demoLoginDiv.style.display = 'none';
         
-        // Determine the most appropriate API URL based on environment
-        let apiUrl;
-        
-        // If we have a config API URL, use it
-        if (window.APP_CONFIG.API_URL) {
-          apiUrl = window.APP_CONFIG.API_URL;
-          console.log('Using configured API URL:', apiUrl);
-        } 
-        // If on Vercel, we can use the relative path (proxy will handle it)
-        else if (window.location.hostname.includes('vercel.app')) {
-          apiUrl = window.location.origin;
-          console.log('Using Vercel proxy:', apiUrl);
-        } 
-        // If local development but no API URL, use ngrok directly
-        else {
-          apiUrl = 'https://83bc16e00594.ngrok-free.app';
-          console.log('Using default ngrok URL:', apiUrl);
-        }
+        // Use direct ngrok URL for maximum reliability on Vercel
+        const apiUrl = 'https://83bc16e00594.ngrok-free.app';
         
         // Make the API call
-        console.log(`Fetching payment history for ${email}`);
+        console.log(`Fetching payment history for ${email} from ${apiUrl}`);
         
-        // Construct the endpoint URL based on environment
-        let endpoint;
-        
-        // If this is a Vercel deployment using the proxy
-        if (window.location.hostname.includes('vercel.app') && !window.APP_CONFIG.API_URL) {
-          endpoint = `/api/payment-history?email=${email}`;
-        } else {
-          endpoint = `${apiUrl}/api/payment-history?email=${email}`;
-        }
-        
-        console.log('Fetching from endpoint:', endpoint);
-        
-        const response = await fetch(endpoint, {
+        const response = await fetch(`${apiUrl}/api/payment-history?email=${email}`, {
           mode: 'cors',
           credentials: 'include',
           headers: {
