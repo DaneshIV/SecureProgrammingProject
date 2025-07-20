@@ -46,11 +46,11 @@ form.addEventListener('submit', async (e) => {
     try {
 
       // Fetch a fresh CSRF token before the request
-      const csrfRes = await fetch(backendURL + '/api/csrf-token', { credentials: 'include' });
+      const csrfRes = await fetch('/api/csrf-token', { credentials: 'include' });
       const csrfData = await csrfRes.json();
       const csrfToken = csrfData.csrfToken;
 
-      const res = await fetch(backendURL + endpoint, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -78,11 +78,11 @@ form.addEventListener('submit', async (e) => {
 // Example logout function
 async function logout() {
   // Fetch a fresh CSRF token before logout
-  const csrfRes = await fetch(backendURL + '/api/csrf-token', { credentials: 'include' });
+  const csrfRes = await fetch('/api/csrf-token', { credentials: 'include' });
   const csrfData = await csrfRes.json();
   const csrfToken = csrfData.csrfToken;
 
-  await fetch(backendURL + '/logout', {
+  await fetch('/logout', {
     method: 'POST',
     headers: { 'CSRF-Token': csrfToken },
     credentials: 'include'
