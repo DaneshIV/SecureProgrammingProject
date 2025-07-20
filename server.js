@@ -5,34 +5,12 @@ const sqlite3 = require('sqlite3').verbose();
 const app = express();
 const PORT = 3000;
 
-// CORS configuration - More flexible for development and deployment
+// CORS configuration
 const corsOptions = {
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl)
-    if(!origin) return callback(null, true);
-    
-    // Allow localhost and specific origins
-    const allowedOrigins = [
-      'https://secure-programming-project.vercel.app',
-      'http://localhost:3000',
-      'https://83bc16e00594.ngrok-free.app',  // Your specific ngrok URL
-      /\.ngrok-free\.app$/  // Allow any ngrok subdomain
-    ];
-    
-    // Check if origin matches any allowed origin
-    const isAllowed = allowedOrigins.some(allowedOrigin => {
-      if (allowedOrigin instanceof RegExp) {
-        return allowedOrigin.test(origin);
-      }
-      return allowedOrigin === origin;
-    });
-    
-    if(isAllowed) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS not allowed'));
-    }
-  },
+  origin: [
+    'https://secure-programming-project.vercel.app',
+    'https://83bc16e00594.ngrok-free.app'
+  ],
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type'],
   credentials: true
@@ -270,36 +248,9 @@ app.get('/api/payment-history', (req, res) => {
   });
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('❌ Server error:', err);
-  res.status(500).json({ error: 'Server error occurred', message: err.message });
-});
-
-// Handle shutdown gracefully
-process.on('SIGINT', () => {
-  console.log('\n👋 Shutting down server...');
-  // Close database connection
-  if (db) {
-    console.log('📁 Closing database connection...');
-    db.close();
-  }
-  process.exit(0);
-});
-
-// Server start with error handling
-const server = app.listen(PORT, () => {
+// Server start
+app.listen(PORT, () => {
   console.log(`🚨 Vulnerable server running at http://localhost:${PORT}`);
-})
-.on('error', (err) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`❌ Port ${PORT} is already in use!`);
-    console.log('👉 Try running: lsof -i :3000 | grep LISTEN');
-    console.log('👉 Then kill the process: kill -9 [PID]');
-  } else {
-    console.error('❌ Server error:', err);
-  }
-  process.exit(1);
 });
 
 module.exports = app; // for testing

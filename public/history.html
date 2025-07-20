@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Payment History</title>
-  <script src="config.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -116,10 +115,8 @@
         // Vulnerable: Using email from localStorage without verification
         const email = auth.email;
         
-        // Use the configuration API URL
-        const backendURL = window.APP_CONFIG.API_URL || '';
-        
         // Vulnerable: Direct API call with email as a query parameter
+        const backendURL = 'https://83bc16e00594.ngrok-free.app';
         const response = await fetch(`${backendURL}/api/payment-history?email=${email}`);
         
         if (!response.ok) {

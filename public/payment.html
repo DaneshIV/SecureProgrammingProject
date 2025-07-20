@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Blind Box Payment</title>
-  <script src="config.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -338,8 +337,7 @@
         paymentMessage.style.display = "block";
         
         try {
-          // Use the configuration API URL
-          const backendURL = window.APP_CONFIG.API_URL || '';
+          const backendURL = 'https://83bc16e00594.ngrok-free.app';
           const response = await fetch(`${backendURL}/api/process-payment`, {
             method: 'POST',
             headers: {
