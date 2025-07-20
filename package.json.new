@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "./start-local.sh",
+    "start": "node server.js",
     "local": "./start-local.sh",
     "ngrok": "./start-ngrok.sh",
     "existing-ngrok": "./use-existing-ngrok.sh",
