@@ -1,19 +1,25 @@
 {
   "name": "secureprogrammingproject",
   "version": "1.0.0",
-  "description": "",
+  "description": "A vulnerable payment system for educational purposes",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js",
-    "deploy": "vercel --prod"
+    "start": "./start-local.sh",
+    "local": "./start-local.sh",
+    "ngrok": "./start-ngrok.sh",
+    "existing-ngrok": "./use-existing-ngrok.sh",
+    "deploy": "vercel --prod",
+    "diagnose": "./diagnose.sh",
+    "cleanup": "./cleanup.sh",
+    "help": "cat QUICKSTART.md"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^5.1.0",
+    "express": "^4.18.3",
     "sqlite3": "^5.1.7"
   }
 }
