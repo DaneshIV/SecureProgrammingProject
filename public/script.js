@@ -8,6 +8,9 @@ const toggleText = document.getElementById('toggle-text');
 const backendURL = 'https://83bc16e00594.ngrok-free.app'
 
 let isLogin = true;
+let csrfToken = '';
+
+// Remove global CSRF token fetch on page load
 
 toggleLink.addEventListener('click', (e) => {
   e.preventDefault();
@@ -20,17 +23,41 @@ toggleLink.addEventListener('click', (e) => {
   message.textContent = '';
 });
 
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = emailInput.value;
     const password = passwordInput.value;
+    if (!isValidEmail(email)) {
+      message.textContent = 'Invalid email format';
+      message.style.color = 'red';
+      return;
+    }
+    if (password.length < 8) {
+      message.textContent = 'Password must be at least 8 characters';
+      message.style.color = 'red';
+      return;
+    }
     const endpoint = isLogin ? '/login' : '/signup';
   
     try {
-      const res = await fetch(`${backendURL}${endpoint}`, {  // Use the ngrok URL here
+
+      // Fetch a fresh CSRF token before the request
+      const csrfRes = await fetch('/api/csrf-token', { credentials: 'include' });
+      const csrfData = await csrfRes.json();
+      const csrfToken = csrfData.csrfToken;
+
+      const res = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        headers: {
+          'Content-Type': 'application/json',
+          'CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include'
       });
   
       const data = await res.json();
@@ -38,15 +65,28 @@ form.addEventListener('submit', async (e) => {
       message.style.color = res.ok ? 'green' : 'red';
   
       if (res.ok) {
-        // Simulate session (not secure – for demo only)
-        localStorage.setItem("auth", JSON.stringify({ email }));
-  
         // Redirect to dashboard
         window.location.href = "/dashboard.html";
+
       }
     } catch (err) {
       message.textContent = 'Error connecting to server';
       message.style.color = 'red';
     }
   });
+
+// Example logout function
+async function logout() {
+  // Fetch a fresh CSRF token before logout
+  const csrfRes = await fetch('/api/csrf-token', { credentials: 'include' });
+  const csrfData = await csrfRes.json();
+  const csrfToken = csrfData.csrfToken;
+
+  await fetch('/logout', {
+    method: 'POST',
+    headers: { 'CSRF-Token': csrfToken },
+    credentials: 'include'
+  });
+  window.location.href = '/';
+}
   
