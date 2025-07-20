@@ -82,42 +82,11 @@
       background-color: #f8d7da;
       color: #721c24;
     }
-    
-    .demo-login {
-      background-color: #e2f0ff;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      display: none;
-    }
-    
-    .demo-login button {
-      background-color: #007bff;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-    
-    .demo-login button:hover {
-      background-color: #0069d9;
-    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Payment History</h1>
-    
-    <!-- Demo Login Section - Will display if no auth found -->
-    <div id="demo-login" class="demo-login">
-      <h3>Authentication Required</h3>
-      <p>No authentication found. For demonstration purposes, you can use one of these demo accounts:</p>
-      <button onclick="useDemo('user@example.com')">Use user@example.com</button>
-      <button onclick="useDemo('test@example.com')">Use test@example.com</button>
-      <p><small>This is a vulnerable demonstration of a payment system.</small></p>
-    </div>
     
     <table class="payment-table">
       <thead>
@@ -143,47 +112,23 @@
   </div>
   
   <script>
-    // Demo login function
-    function useDemo(email) {
-      const demoAuth = { email: email };
-      localStorage.setItem('auth', JSON.stringify(demoAuth));
-      console.log('Demo login set for:', email);
-      document.getElementById('demo-login').style.display = 'none';
-      loadPaymentHistory();
-    }
-    
-    // Main function to load payment history
-    async function loadPaymentHistory() {
+    document.addEventListener('DOMContentLoaded', async function() {
       const historyTableBody = document.getElementById('payment-history');
       const messageDiv = document.getElementById('message');
-      const demoLoginDiv = document.getElementById('demo-login');
       
       try {
         // Get user email from localStorage (vulnerable)
         const auth = JSON.parse(localStorage.getItem('auth'));
         if (!auth || !auth.email) {
-          // Show demo login options instead of throwing error
-          demoLoginDiv.style.display = 'block';
-          historyTableBody.innerHTML = `
-            <tr>
-              <td colspan="5" style="text-align: center;">Please login to view payment history</td>
-            </tr>
-          `;
-          return;
+          throw new Error('No user logged in');
         }
         
         // Vulnerable: Using email from localStorage without verification
         const email = auth.email;
         
         // Use the configuration API URL
-        let backendURL = window.APP_CONFIG.API_URL || '';
-        console.log('Initial API URL:', backendURL);
-        
-        // For Vercel deployment, ensure we use the ngrok URL
-        if (window.location.hostname.includes('vercel.app') && !backendURL) {
-          backendURL = 'https://83bc16e00594.ngrok-free.app';
-          console.log('Detected Vercel environment, using ngrok URL:', backendURL);
-        }
+        const backendURL = window.APP_CONFIG.API_URL || '';
+        console.log('Using API URL:', backendURL);
         
         // Display current configuration
         const configInfo = `Environment: ${window.APP_CONFIG.ENVIRONMENT}, API URL: ${backendURL || 'Using relative paths'}`;
@@ -304,18 +249,12 @@
             messageDiv.className = "message error";
             messageDiv.style.display = "block";
             
-            // Show demo login if the error is related to auth
-            if (error.message.includes('No user logged in')) {
-              demoLoginDiv.style.display = 'block';
-            }
-            
           } catch (e) {
             historyTableBody.innerHTML = `
               <tr>
                 <td colspan="5" style="text-align: center;">Error loading payment history</td>
               </tr>
             `;
-            demoLoginDiv.style.display = 'block';
           }
         } else {
           historyTableBody.innerHTML = `
@@ -323,14 +262,8 @@
               <td colspan="5" style="text-align: center;">Error loading payment history</td>
             </tr>
           `;
-          demoLoginDiv.style.display = 'block';
         }
       }
-    }
-
-    // Run the main function when the page loads
-    document.addEventListener('DOMContentLoaded', function() {
-      loadPaymentHistory();
     });
   </script>
 </body>
