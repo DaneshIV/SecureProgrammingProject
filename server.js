@@ -23,9 +23,10 @@ const corsOptions = {
   credentials: true
 };
 
-app.use(cors(corsOptions));
 
-app.options('*', cors(corsOptions)); // enable preflight for all routes
+app.use(cors(corsOptions));
+// app.options('*', cors(corsOptions)); // enable preflight for all routes (removed to fix path-to-regexp error)
+
 
 // Body parser and static files
 app.use(express.json());

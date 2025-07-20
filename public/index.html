@@ -78,7 +78,9 @@
   const message = document.getElementById('message');
   const formTitle = document.getElementById('formTitle');
   const backendURL = 'https://83bc16e00594.ngrok-free.app'
+  //const backendURL = 'http://localhost:3000'
 
+  
   let isLogin = true;
 
   // Switch between Login and Signup form
@@ -96,11 +98,22 @@
     const password = passwordInput.value;
 
     try {
+      // Fetch CSRF token first
+      const csrfRes = await fetch(`${backendURL}/api/csrf-token`, { 
+        credentials: 'include' 
+      });
+      const csrfData = await csrfRes.json();
+      const csrfToken = csrfData.csrfToken;
+
       const res = await fetch(`${backendURL}/${isLogin ? 'login' : 'signup'}`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ email, password })
-});
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include'
+      });
 
       const data = await res.json();
       message.textContent = data.message;
