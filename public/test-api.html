@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Connection Test</title>
+  <script>
+    // Load the configuration
+    const apiConfig = {
+      localUrl: 'http://localhost:3000',
+      ngrokUrl: 'https://83bc16e00594.ngrok-free.app'
+    };
+  </script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .test-section {
+      margin-bottom: 20px;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    
+    .success {
+      color: green;
+      font-weight: bold;
+    }
+    
+    .error {
+      color: red;
+      font-weight: bold;
+    }
+    
+    button {
+      padding: 5px 10px;
+      margin: 5px;
+      cursor: pointer;
+    }
+    
+    pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 5px;
+      overflow: auto;
+      max-height: 200px;
+    }
+  </style>
+</head>
+<body>
+  <h1>API Connection Test</h1>
+  
+  <div class="test-section">
+    <h2>Environment</h2>
+    <p>Testing from: <span id="origin"></span></p>
+    <div>
+      <button id="btn-set-local">Set Local Mode</button>
+      <button id="btn-set-ngrok">Set Ngrok Mode</button>
+    </div>
+    <div id="env-status"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>CORS Test</h2>
+    <button id="btn-test-cors-local">Test CORS (Local)</button>
+    <button id="btn-test-cors-ngrok">Test CORS (Ngrok)</button>
+    <div id="cors-result"></div>
+  </div>
+  
+  <div class="test-section">
+    <h2>Payment History API Test</h2>
+    <button id="btn-test-history-local">Test History API (Local)</button>
+    <button id="btn-test-history-ngrok">Test History API (Ngrok)</button>
+    <button id="btn-test-history-relative">Test History API (Relative)</button>
+    <div id="history-result"></div>
+  </div>
+  
+  <script>
+    document.getElementById('origin').textContent = window.location.origin;
+    
+    // Set environment buttons
+    document.getElementById('btn-set-local').addEventListener('click', function() {
+      localStorage.setItem('auth', JSON.stringify({ email: 'test@example.com' }));
+      
+      // Create mock config
+      window.APP_CONFIG = {
+        API_URL: "",
+        ENVIRONMENT: "local"
+      };
+      
+      document.getElementById('env-status').innerHTML = `
+        <div class="success">Set to local mode</div>
+        <pre>${JSON.stringify(window.APP_CONFIG, null, 2)}</pre>
+      `;
+    });
+    
+    document.getElementById('btn-set-ngrok').addEventListener('click', function() {
+      localStorage.setItem('auth', JSON.stringify({ email: 'test@example.com' }));
+      
+      // Create mock config
+      window.APP_CONFIG = {
+        API_URL: apiConfig.ngrokUrl,
+        ENVIRONMENT: "ngrok"
+      };
+      
+      document.getElementById('env-status').innerHTML = `
+        <div class="success">Set to ngrok mode</div>
+        <pre>${JSON.stringify(window.APP_CONFIG, null, 2)}</pre>
+      `;
+    });
+    
+    // CORS test buttons
+    document.getElementById('btn-test-cors-local').addEventListener('click', async function() {
+      try {
+        const result = await fetch(`${apiConfig.localUrl}/api/cors-test`);
+        const data = await result.json();
+        document.getElementById('cors-result').innerHTML = `
+          <div class="success">CORS Test Successful (Local)</div>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        `;
+      } catch (error) {
+        document.getElementById('cors-result').innerHTML = `
+          <div class="error">CORS Test Failed (Local)</div>
+          <pre>${error.message}</pre>
+        `;
+      }
+    });
+    
+    document.getElementById('btn-test-cors-ngrok').addEventListener('click', async function() {
+      try {
+        const result = await fetch(`${apiConfig.ngrokUrl}/api/cors-test`);
+        const data = await result.json();
+        document.getElementById('cors-result').innerHTML = `
+          <div class="success">CORS Test Successful (Ngrok)</div>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        `;
+      } catch (error) {
+        document.getElementById('cors-result').innerHTML = `
+          <div class="error">CORS Test Failed (Ngrok)</div>
+          <pre>${error.message}</pre>
+        `;
+      }
+    });
+    
+    // Payment history test buttons
+    document.getElementById('btn-test-history-local').addEventListener('click', async function() {
+      try {
+        const result = await fetch(`${apiConfig.localUrl}/api/payment-history?email=test@example.com`);
+        const data = await result.json();
+        document.getElementById('history-result').innerHTML = `
+          <div class="success">History API Test Successful (Local)</div>
+          <pre>Found ${data.length} records</pre>
+        `;
+      } catch (error) {
+        document.getElementById('history-result').innerHTML = `
+          <div class="error">History API Test Failed (Local)</div>
+          <pre>${error.message}</pre>
+        `;
+      }
+    });
+    
+    document.getElementById('btn-test-history-ngrok').addEventListener('click', async function() {
+      try {
+        const result = await fetch(`${apiConfig.ngrokUrl}/api/payment-history?email=test@example.com`);
+        const data = await result.json();
+        document.getElementById('history-result').innerHTML = `
+          <div class="success">History API Test Successful (Ngrok)</div>
+          <pre>Found ${data.length} records</pre>
+        `;
+      } catch (error) {
+        document.getElementById('history-result').innerHTML = `
+          <div class="error">History API Test Failed (Ngrok)</div>
+          <pre>${error.message}</pre>
+        `;
+      }
+    });
+    
+    document.getElementById('btn-test-history-relative').addEventListener('click', async function() {
+      try {
+        const result = await fetch(`/api/payment-history?email=test@example.com`);
+        const data = await result.json();
+        document.getElementById('history-result').innerHTML = `
+          <div class="success">History API Test Successful (Relative)</div>
+          <pre>Found ${data.length} records</pre>
+        `;
+      } catch (error) {
+        document.getElementById('history-result').innerHTML = `
+          <div class="error">History API Test Failed (Relative)</div>
+          <pre>${error.message}</pre>
+        `;
+      }
+    });
+    
+    // Initial environment check
+    if (window.APP_CONFIG) {
+      document.getElementById('env-status').innerHTML = `
+        <div class="success">Configuration detected</div>
+        <pre>${JSON.stringify(window.APP_CONFIG, null, 2)}</pre>
+      `;
+    } else {
+      document.getElementById('env-status').innerHTML = `
+        <div class="error">No configuration found</div>
+        <p>Click one of the Set Mode buttons above</p>
+      `;
+    }
+  </script>
+</body>
+</html>

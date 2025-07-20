@@ -47,10 +47,20 @@ Then access at the URL shown in the terminal.
 
 ## Troubleshooting
 
+### Common Issues
+
+#### "Server unavailable" in Payment History
+If you see "Server unavailable. Showing local transaction data only" when using ngrok:
+1. Make sure you're using `./use-existing-ngrok.sh` to start the server
+2. Try running `./validate-config.sh ngrok` to fix configuration
+3. Check browser console for CORS errors
+
+### General Troubleshooting
 If you encounter issues:
 1. Run `./diagnose.sh` to check the system status
 2. Run `./cleanup.sh` to fix common issues
-3. Check the README.md for detailed troubleshooting steps
+3. Run `./validate-config.sh [local|ngrok]` to ensure correct configuration
+4. Check the README.md for detailed troubleshooting steps
 
 ## Documentation Files
 

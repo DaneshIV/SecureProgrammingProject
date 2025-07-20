@@ -15,6 +15,10 @@ fi
 # Set environment to local
 ./set-environment.sh local
 
+# Validate configuration
+echo "📄 Validating configuration..."
+./validate-config.sh local
+
 # Start the server
 echo "🚀 Starting the server in local mode..."
 echo "🌐 The application will be available at http://localhost:3000"

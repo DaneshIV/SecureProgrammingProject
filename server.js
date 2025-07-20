@@ -45,9 +45,20 @@ app.options('*', cors(corsOptions)); // enable preflight for all routes
 app.use(express.json());
 app.use(express.static('public'));
 
-// Simple request logger
+// Enhanced request logger
 app.use((req, res, next) => {
-  console.log(`📥 ${req.method} request to ${req.url}`);
+  const origin = req.headers.origin || 'unknown origin';
+  console.log(`📥 ${req.method} request to ${req.url} from ${origin}`);
+  
+  // Log API requests with more details
+  if (req.url.startsWith('/api/')) {
+    console.log(`🔍 API Request Details:
+  - Path: ${req.path}
+  - Query: ${JSON.stringify(req.query)}
+  - Origin: ${origin}
+  - User-Agent: ${req.headers['user-agent'] || 'unknown'}`);
+  }
+  
   next();
 });
 
@@ -285,6 +296,20 @@ process.on('SIGINT', () => {
     db.close();
   }
   process.exit(0);
+});
+
+// Debug endpoint for checking CORS
+app.get('/api/cors-test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'CORS is configured correctly',
+    receivedOrigin: req.headers.origin || 'No origin header received',
+    timestamp: new Date().toISOString(),
+    corsConfig: {
+      allowCredentials: corsOptions.credentials,
+      allowedMethods: corsOptions.methods
+    }
+  });
 });
 
 // Server start with error handling

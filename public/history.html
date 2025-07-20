@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Payment History</title>
   <script src="config.js"></script>
+  <!-- Ensure config is loaded -->
+  <script>
+    if (!window.APP_CONFIG) {
+      window.APP_CONFIG = {
+        API_URL: "https://83bc16e00594.ngrok-free.app",
+        ENVIRONMENT: "ngrok"
+      };
+      console.log('Using default configuration');
+    }
+  </script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -118,12 +128,69 @@
         
         // Use the configuration API URL
         const backendURL = window.APP_CONFIG.API_URL || '';
+        console.log('Using API URL:', backendURL);
+        
+        // Display current configuration
+        const configInfo = `Environment: ${window.APP_CONFIG.ENVIRONMENT}, API URL: ${backendURL || 'Using relative paths'}`;
+        console.log('App Config:', configInfo);
+        
+        // Try CORS test first to check connectivity
+        try {
+          console.log('Testing CORS configuration...');
+          const corsTestUrl = `${backendURL}/api/cors-test`;
+          const corsTest = await fetch(corsTestUrl);
+          if (corsTest.ok) {
+            const corsData = await corsTest.json();
+            console.log('CORS test successful:', corsData);
+          }
+        } catch (corsError) {
+          console.warn('CORS test failed:', corsError);
+        }
         
         // Vulnerable: Direct API call with email as a query parameter
-        const response = await fetch(`${backendURL}/api/payment-history?email=${email}`);
+        const fullUrl = `${backendURL}/api/payment-history?email=${email}`;
+        console.log('Fetching from:', fullUrl);
         
-        if (!response.ok) {
-          throw new Error('Failed to fetch payment history');
+        // Try with multiple fallback options
+        let response;
+        let success = false;
+        
+        try {
+          // First try with config URL
+          console.log('Trying with configured URL:', fullUrl);
+          response = await fetch(fullUrl);
+          success = response.ok;
+        } catch (e) {
+          console.log('First attempt failed:', e);
+        }
+        
+        // If that fails, try with window.location.origin
+        if (!success) {
+          try {
+            const locationUrl = `${window.location.origin}/api/payment-history?email=${email}`;
+            console.log('Trying with location origin:', locationUrl);
+            response = await fetch(locationUrl);
+            success = response.ok;
+          } catch (e) {
+            console.log('Second attempt failed:', e);
+          }
+        }
+        
+        // If that fails too, try with relative URL
+        if (!success) {
+          try {
+            const relativeUrl = `/api/payment-history?email=${email}`;
+            console.log('Trying with relative path:', relativeUrl);
+            response = await fetch(relativeUrl);
+            success = response.ok;
+          } catch (e) {
+            console.log('Third attempt failed:', e);
+          }
+        }
+        
+        if (!success || !response.ok) {
+          console.error('All API attempts failed');
+          throw new Error(`Failed to fetch payment history after multiple attempts`);
         }
         
         const payments = await response.json();
@@ -151,6 +218,14 @@
       } catch (error) {
         console.error('Error loading payment history:', error);
         
+        // Display detailed error information
+        const errorDetails = {
+          message: error.message,
+          apiUrl: window.APP_CONFIG.API_URL,
+          environment: window.APP_CONFIG.ENVIRONMENT
+        };
+        console.log('Error details:', errorDetails);
+        
         // Check if there's a last transaction in localStorage (vulnerable fallback)
         const lastTx = localStorage.getItem('lastTransaction');
         if (lastTx) {
@@ -166,7 +241,11 @@
               </tr>
             `;
             
-            messageDiv.textContent = "Server unavailable. Showing local transaction data only.";
+            messageDiv.innerHTML = `
+              Server unavailable. Showing local transaction data only.<br>
+              <small>Error: ${error.message}</small><br>
+              <small>Config: ${window.APP_CONFIG.ENVIRONMENT}, URL: ${window.APP_CONFIG.API_URL || 'relative'}</small>
+            `;
             messageDiv.className = "message error";
             messageDiv.style.display = "block";
             

@@ -21,6 +21,10 @@ echo "📡 URL: $NGROK_URL"
 # Set the environment configuration
 ./set-environment.sh ngrok "$NGROK_URL"
 
+# Validate configuration
+echo "📄 Validating configuration..."
+./validate-config.sh ngrok
+
 # Start the server
 echo "🚀 Starting the Node.js server..."
 node server.js
