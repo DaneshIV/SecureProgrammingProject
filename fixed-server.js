@@ -1,3 +1,4 @@
+// Fixed server.js with simplified CORS configuration
 const express = require('express');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
@@ -5,9 +6,9 @@ const sqlite3 = require('sqlite3').verbose();
 const app = express();
 const PORT = 3000;
 
-// CORS configuration - Simple for demonstration purposes (VULNERABLE)
+// CORS configuration - Very simple for demonstration purposes (VULNERABLE)
 const corsOptions = {
-  origin: '*', // Allow all origins - most permissive setting
+  origin: '*', // Allow all origins
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Accept', 'Origin', 'Authorization'],
   credentials: true
@@ -74,8 +75,6 @@ app.post('/login', (req, res) => {
     }
   });
 });
-// Insecure signup (vulnerable to SQL injection)
-
 
 // Signup route (parameterized query — safe)
 app.post('/signup', (req, res) => {
