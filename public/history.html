@@ -89,7 +89,6 @@
       padding: 15px;
       border-radius: 8px;
       margin-bottom: 20px;
-      display: none;
     }
     
     .demo-login button {
@@ -105,11 +104,74 @@
     .demo-login button:hover {
       background-color: #0069d9;
     }
+    
+    .debug-panel {
+      background-color: #f8f9fa;
+      padding: 10px;
+      margin-top: 20px;
+      border-radius: 4px;
+      font-size: 12px;
+      display: none;
+    }
+    
+    .show-debug {
+      background-color: #6c757d;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+
+    .progress {
+      height: 5px;
+      width: 100%;
+      background-color: #f0f0f0;
+      margin-top: 10px;
+      border-radius: 5px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background-color: #007bff;
+      animation: progress 2s ease-in-out;
+    }
+
+    @keyframes progress {
+      0% { width: 0%; }
+      100% { width: 100%; }
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+
+    .status-online {
+      background-color: #28a745;
+    }
+
+    .status-offline {
+      background-color: #dc3545;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Payment History</h1>
+    
+    <div style="text-align: center; margin-bottom: 15px;">
+      <span class="status-indicator" id="api-status"></span>
+      <span id="api-status-text">Checking API connection...</span>
+    </div>
     
     <!-- Demo Login Section - Will display if no auth found -->
     <div id="demo-login" class="demo-login">
@@ -118,6 +180,9 @@
       <button onclick="useDemo('user@example.com')">Use user@example.com</button>
       <button onclick="useDemo('test@example.com')">Use test@example.com</button>
       <p><small>This is a vulnerable demonstration of a payment system.</small></p>
+      <div class="progress" id="login-progress">
+        <div class="progress-bar"></div>
+      </div>
     </div>
     
     <table class="payment-table">
@@ -141,29 +206,202 @@
     <div id="message" class="message" style="display: none;"></div>
     
     <button class="back-button" onclick="window.location.href='dashboard.html'">Back to Dashboard</button>
+    
+    <button class="show-debug" onclick="toggleDebugPanel()">Show Debug Info</button>
+    <div id="debug-panel" class="debug-panel"></div>
   </div>
   
   <script>
-    // Demo login function
-    function useDemo(email) {
-      const demoAuth = { email: email };
-      localStorage.setItem('auth', JSON.stringify(demoAuth));
-      console.log('Demo login set for:', email);
-      document.getElementById('demo-login').style.display = 'none';
-      loadPaymentHistory();
+    // Debug panel toggle
+    function toggleDebugPanel() {
+      const debugPanel = document.getElementById('debug-panel');
+      if (debugPanel.style.display === 'none' || !debugPanel.style.display) {
+        debugPanel.style.display = 'block';
+        updateDebugInfo();
+      } else {
+        debugPanel.style.display = 'none';
+      }
     }
     
-    // Main function to load payment history
+    // Update debug panel with current state
+    function updateDebugInfo() {
+      const debugPanel = document.getElementById('debug-panel');
+      const authData = localStorage.getItem('auth') || 'Not found';
+      
+      debugPanel.innerHTML = `
+        <h4>Debug Information</h4>
+        <p><strong>Environment:</strong> ${window.APP_CONFIG.ENVIRONMENT}</p>
+        <p><strong>API URL:</strong> ${window.APP_CONFIG.API_URL || 'Using relative paths'}</p>
+        <p><strong>Host:</strong> ${window.location.hostname}</p>
+        <p><strong>Auth Data:</strong> ${authData}</p>
+        <p><strong>localStorage keys:</strong> ${Object.keys(localStorage).join(', ')}</p>
+        <p><button onclick="clearAuth()">Clear Auth</button> <button onclick="testDirectAPI()">Test API Directly</button></p>
+      `;
+    }
+    
+    // Clear authentication
+    function clearAuth() {
+      localStorage.removeItem('auth');
+      alert('Authentication cleared. Will reload the page.');
+      location.reload();
+    }
+    
+    // Test API directly
+    async function testDirectAPI() {
+      const debugPanel = document.getElementById('debug-panel');
+      debugPanel.innerHTML += '<p>Testing direct API call to ngrok URL...</p>';
+      
+      try {
+        const response = await fetch('https://83bc16e00594.ngrok-free.app/api/cors-test');
+        const data = await response.json();
+        debugPanel.innerHTML += `<p style="color: green;">API test successful: ${JSON.stringify(data)}</p>`;
+      } catch (error) {
+        debugPanel.innerHTML += `<p style="color: red;">API test failed: ${error.message}</p>`;
+      }
+    }
+    
+    // Check API status
+    async function checkAPIStatus() {
+      const statusIndicator = document.getElementById('api-status');
+      const statusText = document.getElementById('api-status-text');
+      
+      try {
+        // Try direct ngrok URL first for best reliability
+        const response = await fetch('https://83bc16e00594.ngrok-free.app/api/cors-test', {
+          mode: 'cors',
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          statusIndicator.className = 'status-indicator status-online';
+          statusText.textContent = 'API connected';
+          return true;
+        }
+      } catch (error) {
+        console.warn('Direct API check failed:', error);
+      }
+      
+      // If direct check failed, try through config
+      try {
+        const backendURL = window.APP_CONFIG.API_URL || '';
+        if (!backendURL) {
+          throw new Error('No API URL configured');
+        }
+        
+        const response = await fetch(`${backendURL}/api/cors-test`, {
+          mode: 'cors',
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          statusIndicator.className = 'status-indicator status-online';
+          statusText.textContent = 'API connected';
+          return true;
+        }
+      } catch (error) {
+        console.warn('Config API check failed:', error);
+      }
+      
+      // All checks failed
+      statusIndicator.className = 'status-indicator status-offline';
+      statusText.textContent = 'API disconnected';
+      return false;
+    }
+    
+    // Demo login function - Enhanced version
+    function useDemo(email) {
+      const demoAuth = { email: email };
+      
+      // Show progress bar
+      const progressBar = document.getElementById('login-progress');
+      progressBar.style.display = 'block';
+      
+      // Save authentication in multiple formats to ensure it persists
+      localStorage.setItem('auth', JSON.stringify(demoAuth));
+      localStorage.setItem('user_email', email); // Backup storage
+      sessionStorage.setItem('auth', JSON.stringify(demoAuth)); // Also try session storage
+      
+      console.log('Demo login set for:', email);
+      
+      // Set a cookie as well (belt and suspenders approach)
+      document.cookie = `user_email=${email}; path=/; max-age=86400`;
+      
+      // Delay slightly to show progress and ensure storage is complete
+      setTimeout(() => {
+        document.getElementById('demo-login').style.display = 'none';
+        loadPaymentHistory();
+      }, 1000);
+    }
+    
+    // Main function to load payment history - Enhanced with better error handling
     async function loadPaymentHistory() {
       const historyTableBody = document.getElementById('payment-history');
       const messageDiv = document.getElementById('message');
       const demoLoginDiv = document.getElementById('demo-login');
       
+      // Update debug panel if visible
+      if (document.getElementById('debug-panel').style.display === 'block') {
+        updateDebugInfo();
+      }
+      
       try {
-        // Get user email from localStorage (vulnerable)
-        const auth = JSON.parse(localStorage.getItem('auth'));
-        if (!auth || !auth.email) {
-          // Show demo login options instead of throwing error
+        // Check API status first
+        const apiOnline = await checkAPIStatus();
+        if (!apiOnline) {
+          throw new Error('API is currently unreachable. Please try again later.');
+        }
+        
+        // Get user email - try multiple storage methods
+        let email;
+        let auth = null;
+        
+        // Try localStorage first
+        try {
+          auth = JSON.parse(localStorage.getItem('auth'));
+          if (auth && auth.email) {
+            email = auth.email;
+            console.log('Auth found in localStorage');
+          }
+        } catch (e) {
+          console.warn('Error parsing localStorage auth:', e);
+        }
+        
+        // If not in localStorage, try sessionStorage
+        if (!email) {
+          try {
+            const sessionAuth = JSON.parse(sessionStorage.getItem('auth'));
+            if (sessionAuth && sessionAuth.email) {
+              email = sessionAuth.email;
+              console.log('Auth found in sessionStorage');
+            }
+          } catch (e) {
+            console.warn('Error parsing sessionStorage auth:', e);
+          }
+        }
+        
+        // Try backup localStorage key
+        if (!email) {
+          email = localStorage.getItem('user_email');
+          if (email) {
+            console.log('Email found in user_email backup');
+          }
+        }
+        
+        // Try cookie as last resort
+        if (!email) {
+          const cookies = document.cookie.split(';');
+          for (const cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            if (name === 'user_email') {
+              email = value;
+              console.log('Email found in cookie');
+              break;
+            }
+          }
+        }
+        
+        if (!email) {
+          // Show demo login options if no authentication found
           demoLoginDiv.style.display = 'block';
           historyTableBody.innerHTML = `
             <tr>
@@ -173,154 +411,47 @@
           return;
         }
         
-        // Vulnerable: Using email from localStorage without verification
-        const email = auth.email;
-        
-        // Use the configuration API URL
-        let backendURL = window.APP_CONFIG.API_URL || '';
-        console.log('Initial API URL:', backendURL);
-        
-        // For Vercel deployment, ensure we use the ngrok URL
-        if (window.location.hostname.includes('vercel.app') && !backendURL) {
-          backendURL = 'https://83bc16e00594.ngrok-free.app';
-          console.log('Detected Vercel environment, using ngrok URL:', backendURL);
+        // If we found email but not auth object, recreate it and store it
+        if (email && !auth) {
+          auth = { email: email };
+          localStorage.setItem('auth', JSON.stringify(auth));
+          console.log('Recreated auth object from found email');
         }
         
-        // Display current configuration
-        const configInfo = `Environment: ${window.APP_CONFIG.ENVIRONMENT}, API URL: ${backendURL || 'Using relative paths'}`;
-        console.log('App Config:', configInfo);
+        // Always hide the login div if we have an email
+        demoLoginDiv.style.display = 'none';
         
-        // Try CORS test first to check connectivity
-        try {
-          console.log('Testing CORS configuration...');
-          const corsTestUrl = `${backendURL}/api/cors-test`;
-          const corsTest = await fetch(corsTestUrl);
-          if (corsTest.ok) {
-            const corsData = await corsTest.json();
-            console.log('CORS test successful:', corsData);
+        // Use direct ngrok URL for maximum reliability on Vercel
+        const apiUrl = 'https://83bc16e00594.ngrok-free.app';
+        
+        // Make the API call
+        console.log(`Fetching payment history for ${email} from ${apiUrl}`);
+        
+        const response = await fetch(`${apiUrl}/api/payment-history?email=${email}`, {
+          mode: 'cors',
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json',
+            'Origin': window.location.origin
           }
-        } catch (corsError) {
-          console.warn('CORS test failed:', corsError);
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API request failed with status: ${response.status}`);
         }
         
-        // Vulnerable: Direct API call with email as a query parameter
-        const fullUrl = `${backendURL}/api/payment-history?email=${email}`;
-        console.log('Fetching from:', fullUrl);
+        // Parse the JSON response
+        const responseText = await response.text();
+        console.log('API response received, length:', responseText.length);
         
-        // Try with multiple fallback options
-        let response;
-        let success = false;
-        let responseText = '';
-        
-        try {
-          // First try with config URL
-          console.log('Trying with configured URL:', fullUrl);
-          response = await fetch(fullUrl, {
-            mode: 'cors',
-            credentials: 'include',
-            headers: {
-              'Accept': 'application/json',
-              'Origin': window.location.origin
-            }
-          });
-          success = response.ok;
-          
-          // Log the response details for debugging
-          const contentType = response.headers.get('content-type');
-          console.log('Response status:', response.status);
-          console.log('Response content-type:', contentType);
-          
-          // Store response text for debugging
-          responseText = await response.text();
-          console.log('Response preview:', responseText.substring(0, 100) + '...');
-          
-          // If we got text but it's not valid JSON, this is an error
-          if (!contentType || !contentType.includes('application/json')) {
-            success = false;
-            throw new Error('Received non-JSON response: ' + responseText.substring(0, 100));
-          }
-          
-          // Reset response to the beginning (after reading text)
-          response = new Response(responseText, {
-            status: response.status,
-            statusText: response.statusText,
-            headers: response.headers
-          });
-        } catch (e) {
-          console.log('First attempt failed:', e);
-        }
-        
-        // If that fails, try with window.location.origin
-        if (!success) {
-          try {
-            const locationUrl = `${window.location.origin}/api/payment-history?email=${email}`;
-            console.log('Trying with location origin:', locationUrl);
-            response = await fetch(locationUrl, {
-              mode: 'cors',
-              credentials: 'include',
-              headers: {
-                'Accept': 'application/json',
-                'Origin': window.location.origin
-              }
-            });
-            success = response.ok;
-            responseText = await response.text();
-            console.log('Second attempt response:', responseText.substring(0, 100));
-            
-            // If successful, reset response to beginning
-            if (success) {
-              response = new Response(responseText, {
-                status: response.status,
-                statusText: response.statusText,
-                headers: response.headers
-              });
-            }
-          } catch (e) {
-            console.log('Second attempt failed:', e);
-          }
-        }
-        
-        // If that fails too, try with relative URL
-        if (!success) {
-          try {
-            const relativeUrl = `/api/payment-history?email=${email}`;
-            console.log('Trying with relative path:', relativeUrl);
-            response = await fetch(relativeUrl, {
-              mode: 'cors',
-              credentials: 'include',
-              headers: {
-                'Accept': 'application/json'
-              }
-            });
-            success = response.ok;
-            responseText = await response.text();
-            console.log('Third attempt response:', responseText.substring(0, 100));
-            
-            // If successful, reset response to beginning
-            if (success) {
-              response = new Response(responseText, {
-                status: response.status,
-                statusText: response.statusText,
-                headers: response.headers
-              });
-            }
-          } catch (e) {
-            console.log('Third attempt failed:', e);
-          }
-        }
-        
-        if (!success || !response.ok) {
-          console.error('All API attempts failed');
-          throw new Error(`Failed to fetch payment history: ${responseText.substring(0, 100)}`);
-        }
-        
+        // Better JSON parsing with error handling
         let payments;
         try {
           payments = JSON.parse(responseText);
-          console.log('Successfully parsed JSON response');
+          console.log('Successfully parsed JSON response, found', payments.length, 'payments');
         } catch (e) {
           console.error('JSON parsing error:', e);
-          throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}`);
+          throw new Error(`Invalid JSON response: ${responseText.substring(0, 100)}...`);
         }
         
         if (payments.length === 0) {
@@ -347,14 +478,18 @@
         console.error('Error loading payment history:', error);
         
         // Display detailed error information
-        const errorDetails = {
-          message: error.message,
-          apiUrl: window.APP_CONFIG.API_URL,
-          environment: window.APP_CONFIG.ENVIRONMENT
-        };
-        console.log('Error details:', errorDetails);
+        messageDiv.innerHTML = `
+          Server unavailable. ${error.message}<br>
+          <small>Config: ${window.APP_CONFIG.ENVIRONMENT}, URL: ${window.APP_CONFIG.API_URL || 'relative'}</small><br>
+          <button onclick="forceDemoLogin()">Try Demo Login</button>
+        `;
+        messageDiv.className = "message error";
+        messageDiv.style.display = "block";
         
-        // Check if there's a last transaction in localStorage (vulnerable fallback)
+        // Show demo login as a fallback
+        demoLoginDiv.style.display = 'block';
+        
+        // Try to show any local transaction data if available
         const lastTx = localStorage.getItem('lastTransaction');
         if (lastTx) {
           try {
@@ -368,39 +503,22 @@
                 <td>${tx.id}</td>
               </tr>
             `;
-            
-            messageDiv.innerHTML = `
-              Server unavailable. Showing local transaction data only.<br>
-              <small>Error: ${error.message}</small><br>
-              <small>Config: ${window.APP_CONFIG.ENVIRONMENT}, URL: ${window.APP_CONFIG.API_URL || 'relative'}</small>
-            `;
-            messageDiv.className = "message error";
-            messageDiv.style.display = "block";
-            
-            // Show demo login if the error is related to auth
-            if (error.message.includes('No user logged in')) {
-              demoLoginDiv.style.display = 'block';
-            }
-            
           } catch (e) {
             historyTableBody.innerHTML = `
               <tr>
                 <td colspan="5" style="text-align: center;">Error loading payment history</td>
               </tr>
             `;
-            demoLoginDiv.style.display = 'block';
           }
-        } else {
-          historyTableBody.innerHTML = `
-            <tr>
-              <td colspan="5" style="text-align: center;">Error loading payment history</td>
-            </tr>
-          `;
-          demoLoginDiv.style.display = 'block';
         }
       }
     }
-
+    
+    // Force a demo login when all else fails
+    function forceDemoLogin() {
+      useDemo('test@example.com');
+    }
+    
     // Run the main function when the page loads
     document.addEventListener('DOMContentLoaded', function() {
       loadPaymentHistory();
