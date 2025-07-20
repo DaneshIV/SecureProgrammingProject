@@ -14,9 +14,11 @@ const corsOptions = {
     // Allow localhost and specific origins
     const allowedOrigins = [
       'https://secure-programming-project.vercel.app',
+      'http://secure-programming-project.vercel.app',
       'http://localhost:3000',
       'https://83bc16e00594.ngrok-free.app',  // Your specific ngrok URL
-      /\.ngrok-free\.app$/  // Allow any ngrok subdomain
+      /\.ngrok-free\.app$/,  // Allow any ngrok subdomain
+      /\.vercel\.app$/       // Allow any vercel app subdomain
     ];
     
     // Check if origin matches any allowed origin
