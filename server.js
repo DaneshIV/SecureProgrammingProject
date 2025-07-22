@@ -73,7 +73,7 @@ const db = new sqlite3.Database('./users.db', err => {
 db.run(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
     password TEXT NOT NULL
   )
 `);
@@ -95,10 +95,10 @@ const loginLimiter = rateLimit({
   message: { message: 'Too many login attempts, please try again later.' }
 });
 
-// Insecure login (vulnerable to SQL injection)
+// Secure login
 app.post('/login', loginLimiter, (req, res) => {
   const { email, password } = req.body;
-  if (!validateEmail(email) || !validatePassword(password)) {
+  if (!validateEmail(email)) {
     return res.status(400).json({ message: 'Invalid input' });
   }
   const query = 'SELECT * FROM users WHERE email = ?';
@@ -134,7 +134,7 @@ function requireAuth(req, res, next) {
   next();
 }
 
-// Insecure signup (vulnerable to SQL injection)
+// Secure signup (protected against SQL injection with parameterized queries)
 app.post('/signup', (req, res) => {
   const { email, password } = req.body;
   if (!validateEmail(email) || !validatePassword(password)) {
@@ -142,17 +142,24 @@ app.post('/signup', (req, res) => {
   }
   bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
     if (err) {
+      console.error('Hashing error:', err);
       return res.status(500).json({ message: 'Error hashing password' });
     }
     const stmt = db.prepare('INSERT INTO users (email, password) VALUES (?, ?)');
     stmt.run(email, hashedPassword, function(err) {
-      if (err) return res.status(500).json({ message: 'Signup failed' });
+      if (err) {
+        if (err.code === 'SQLITE_CONSTRAINT') {
+          return res.status(400).json({ message: 'Email already exists' });
+        }
+        console.error('Signup failed:', err);
+        return res.status(500).json({ message: 'Signup failed' });
+      }
       res.json({ message: 'Signup successful', userId: this.lastID });
     });
   });
 });
 
-// Blind box database (optional)
+// Blind box database 
 db.run(`
   CREATE TABLE IF NOT EXISTS purchases (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -163,40 +170,7 @@ db.run(`
   )
 `);
 
-// Vulnerable blind box API (no input validation, no auth)
-
-app.post('/api/purchase', requireAuth, (req, res) => {
-  const { email, boxType } = req.body;
-
-  // Use session user email for security
-  const userEmail = req.session.user.email;
-
-  // Insecure: Blind box logic fully exposed
-  const blindBoxItems = {
-    A: ['Sticker', 'Keychain', 'Pen'],
-    B: ['Notebook', 'T-Shirt', 'Mug'],
-    C: ['Power Bank', 'Bluetooth Speaker', 'Wireless Earbuds']
-  };
-
-  const items = blindBoxItems[boxType];
-  if (!items) return res.status(400).json({ error: 'Invalid box type' });
-
-  const randomItem = items[Math.floor(Math.random() * items.length)];
-
-
-  // Secure: Parameterized query
-  const stmt = db.prepare('INSERT INTO purchases (email, boxType, item) VALUES (?, ?, ?)');
-  stmt.run(userEmail, boxType, randomItem, (err) => {
-
-    if (err) {
-      console.error('Insert failed:', err);
-      return res.status(500).json({ error: 'Purchase failed' });
-    }
-    res.json({ item: randomItem });
-  });
-});
-
-// Create payments table with intentionally vulnerable design
+// Create payments table
 db.run(`
   CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -214,10 +188,34 @@ db.run(`
   )
 `);
 
+const couponDiscounts = {
+  'DISCOUNT10': 0.10,
+  'WELCOME10': 0.10,
+  'SPECIAL50': 0.50,
+  'FREESHIP': 0.15,
+  'ADMIN100': 1.00,
+  'DEBUG': 1.00
+};
+
+function getDiscountForCoupon(code) {
+  if (!code) return 0;
+  return couponDiscounts[code] || 0;
+}
+
+function validateCouponCode(code) {
+  return (
+    code === undefined ||
+    code === "" ||
+    (typeof code === 'string' && /^[A-Z0-9]{5,15}$/.test(code) && couponDiscounts.hasOwnProperty(code))
+  );
+}
+
 function validateCardHolder(name) {
-  return typeof name === 'string' && name.trim().length > 0;
+  // Only allow letters, spaces, hyphens, and apostrophes
+  return typeof name === 'string' && /^[A-Za-z\s\-']+$/.test(name.trim()) && name.trim().length > 0;
 }
 function validateCardNumber(number) {
+  // Only allow 13-19 digits, no spaces or symbols
   return typeof number === 'string' && /^\d{13,19}$/.test(number);
 }
 function validateExpiry(expiry) {
@@ -229,22 +227,20 @@ function validateCVV(cvv) {
 function validateBoxType(boxType) {
   return ['A', 'B', 'C'].includes(boxType);
 }
-function validateCouponCode(code) {
-  return typeof code === 'string' || code === undefined;
-}
 
-// Vulnerable payment processing endpoint
+
 app.post('/api/process-payment', requireAuth, (req, res) => {
   const {
     cardHolder,
     cardNumber,
     expiry,
     cvv,
-    email,
     boxType,
     couponCode,
     timestamp
   } = req.body;
+
+  const userEmail = req.session.user.email;
 
   // Validate payment fields
   if (!validateCardHolder(cardHolder) ||
@@ -257,74 +253,91 @@ app.post('/api/process-payment', requireAuth, (req, res) => {
   }
   
   // 1. Calculate price on the server
-  const boxPrices = { A: 10, B: 20, C: 30 };
+  const boxPrices = { A: 25, B: 50, C: 75 };
   let originalPrice = boxPrices[boxType] || boxPrices.A;
+  let discount = getDiscountForCoupon(couponCode);
   let amount = originalPrice;
-
-  // 2. Validate/apply coupon on the server
-  if (couponCode === 'DISCOUNT10') {
-    amount = amount * 0.9; // 10% off
+  if (discount > 0) {
+    amount = amount * (1 - discount);
   }
-
-  // 3. Generate transactionId on the server
-  const transactionId = uuidv4();
-
-  console.log(`💳 Processing payment of $${amount} for ${email}`);
 
   // Only store last 4 digits of card number, do not store cvv
   const cardLastFour = cardNumber.slice(-4);
 
-  const stmt = db.prepare(`
-    INSERT INTO payments (
-      transaction_id, email, card_holder, card_number, expiry,
-      box_type, amount, original_price, coupon_code
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  stmt.run(
-    transactionId, email, cardHolder, cardLastFour, expiry,
-    boxType, amount, originalPrice, couponCode,
-    function(err) {
+  // 2. Prevent replay attacks: check for recent identical payment
+  const now = Date.now();
+  const twoMinutesAgo = now - 2 * 60 * 1000;
+  db.get(
+    `SELECT * FROM payments WHERE card_number = ? AND amount = ? AND created_at >= datetime(?, 'unixepoch')`,
+    [cardLastFour, amount, Math.floor(twoMinutesAgo / 1000)],
+    (err, row) => {
       if (err) {
-        console.error('💥 Payment error:', err);
+        console.error('Replay check error:', err);
         return res.status(500).json({ error: 'Payment processing failed' });
       }
-      
-      // Process the blind box item
-      const blindBoxItems = {
-        A: ['Sticker', 'Keychain', 'Pen'],
-        B: ['Notebook', 'T-Shirt', 'Mug'],
-        C: ['Power Bank', 'Bluetooth Speaker', 'Wireless Earbuds']
-      };
-      
-      const items = blindBoxItems[boxType] || blindBoxItems.A;
-      const randomItem = items[Math.floor(Math.random() * items.length)];
-      
-      // Secure: Parameterized query for purchases
-      const purchaseStmt = db.prepare('INSERT INTO purchases (email, boxType, item) VALUES (?, ?, ?)');
-      purchaseStmt.run(email, boxType, randomItem, (err) => {
-        if (err) {
-          console.error('Purchase record error:', err);
-          // Continue despite the error - vulnerable behavior
+      if (row) {
+        return res.status(429).json({ error: 'Duplicate or replayed payment detected. Please wait before retrying.' });
+      }
+
+      // 3. Generate transactionId on the server
+      const transactionId = uuidv4();
+
+      console.log(`💳 Processing payment of $${amount} for ${userEmail}`);
+
+      const stmt = db.prepare(`
+        INSERT INTO payments (
+          transaction_id, email, card_holder, card_number, expiry,
+          box_type, amount, original_price, coupon_code
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      stmt.run(
+        transactionId, userEmail, cardHolder, cardLastFour, expiry,
+        boxType, amount, originalPrice, couponCode,
+        function(err) {
+          if (err) {
+            console.error('💥 Payment error:', err);
+            return res.status(500).json({ error: 'Payment processing failed' });
+          }
+          
+          // Process the blind box item
+          const blindBoxItems = {
+            A: ['Sticker', 'Keychain', 'Pen'],
+            B: ['Notebook', 'T-Shirt', 'Mug'],
+            C: ['Power Bank', 'Bluetooth Speaker', 'Wireless Earbuds']
+          };
+          
+          const items = blindBoxItems[boxType] || blindBoxItems.A;
+          const randomItem = items[Math.floor(Math.random() * items.length)];
+          
+          // Secure: Parameterized query for purchases
+          const purchaseStmt = db.prepare('INSERT INTO purchases (email, boxType, item) VALUES (?, ?, ?)');
+          purchaseStmt.run(userEmail, boxType, randomItem, (err) => {
+            if (err) {
+              console.error('Purchase record error:', err);
+              // Continue despite the error - vulnerable behavior
+            }
+            
+            // Success response with minimal card info
+            res.json({
+              success: true,
+              message: 'Payment processed successfully',
+              transactionId: transactionId,
+              paymentId: this.lastID,
+              item: randomItem,
+              cardLastFour: cardLastFour,
+              amount: amount,
+              originalPrice: originalPrice,
+              discount: discount,
+              timestamp: new Date().toISOString()
+            });
+          });
         }
-        
-        // Success response with minimal card info
-        res.json({
-          success: true,
-          message: 'Payment processed successfully',
-          transactionId: transactionId,
-          paymentId: this.lastID,
-          item: randomItem,
-          cardLastFour: cardLastFour,
-          amount: amount,
-          originalPrice: originalPrice,
-          timestamp: new Date().toISOString()
-        });
-      });
+      );
     }
   );
 });
 
-// Vulnerable payment history endpoint (no proper authentication)
+// Payment history endpoint
 app.get('/api/payment-history', requireAuth, (req, res) => {
   const userEmail = req.session.user.email;
 

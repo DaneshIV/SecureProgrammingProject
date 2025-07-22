@@ -245,7 +245,7 @@
       // Vulnerable: Automatically check for URL discount parameter
       const urlDiscount = urlParams.get('discount');
       if (urlDiscount) {
-        applyDiscount(urlDiscount);
+        // applyDiscount(urlDiscount); // Removed client-side discount logic
       }
       
       // Load user email from localStorage if exists
@@ -262,43 +262,16 @@
       couponBtn.addEventListener('click', function() {
         const couponCode = couponInput.value.trim();
         if (couponCode) {
-          applyDiscount(couponCode);
+          // applyDiscount(couponCode); // Removed client-side discount logic
         } else {
           couponMessage.textContent = "Please enter a coupon code";
           couponMessage.style.color = "#dc3545";
         }
       });
       
-      // Vulnerable: Client-side coupon validation logic
-      function applyDiscount(code) {
-        // Vulnerable: Discount codes hardcoded in client-side JavaScript
-        const coupons = {
-          'WELCOME10': 0.1,    // 10% off
-          'SPECIAL50': 0.5,    // 50% off
-          'FREESHIP': 0.15,    // 15% off (misleading name)
-          'ADMIN100': 1.0,     // 100% off (admin discount)
-          'DEBUG': 1.0         // 100% off (debug discount)
-        };
-        
-        if (coupons[code]) {
-          const discount = boxPrice * coupons[code];
-          const newTotal = boxPrice - discount;
-          
-          // Update UI
-          discountRow.style.display = 'flex';
-          discountAmountEl.textContent = `-$${discount.toFixed(2)}`;
-          totalPriceEl.textContent = `$${newTotal.toFixed(2)}`;
-          
-          // Vulnerable: Store applied discount in localStorage
-          localStorage.setItem('appliedDiscount', code);
-          
-          couponMessage.textContent = "Coupon applied successfully!";
-          couponMessage.style.color = "green";
-        } else {
-          couponMessage.textContent = "Invalid coupon code";
-          couponMessage.style.color = "#dc3545";
-        }
-      }
+      // Remove coupon list and applyDiscount function
+      // Remove all code that references coupons, discountRow, discountAmountEl, and couponMessage
+      // Keep only the coupon input field and sending couponCode to the backend
       
       // Payment form submission
       paymentForm.addEventListener('submit', async function(e) {
@@ -307,10 +280,9 @@
         const cardNumber = document.getElementById('card-number').value.replace(/\s/g, '');
         const expiry = document.getElementById('expiry').value;
         const cvv = document.getElementById('cvv').value;
+        const couponCode = document.getElementById('coupon-code').value.trim().toUpperCase();
         
-        // Vulnerable: No validation of card details on client-side
-        
-        // Vulnerable: Calculate price client-side
+        // Calculate price client-side (no discount)
         const finalPrice = parseFloat(totalPriceEl.textContent.replace('$', ''));
         
         // Create payment payload
@@ -323,11 +295,7 @@
           boxType: boxTypeInput.value,
           amount: finalPrice,
           originalPrice: parseFloat(originalPriceInput.value),
-          // Vulnerable: Client-generated transaction ID
-          transactionId: Date.now().toString(36) + Math.random().toString(36).substring(2, 5),
-          // Vulnerable: Including coupon code in request
-          couponCode: localStorage.getItem('appliedDiscount') || '',
-          // Vulnerable: Client-side timestamp
+          couponCode: couponCode,
           timestamp: new Date().toISOString()
         };
         
@@ -337,48 +305,52 @@
         paymentMessage.style.display = "block";
         
         try {
-          const backendURL = 'https://83bc16e00594.ngrok-free.app';
+          //const backendURL = 'https://83bc16e00594.ngrok-free.app';
+          const backendURL = 'http://localhost:3000'
+          // Fetch CSRF token first
+          const csrfRes = await fetch(`${backendURL}/api/csrf-token`, { credentials: 'include' });
+          const csrfData = await csrfRes.json();
+          const csrfToken = csrfData.csrfToken;
+
           const response = await fetch(`${backendURL}/api/process-payment`, {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              'CSRF-Token': csrfToken
             },
-            // Vulnerable: Sending full payment details including card data
-            body: JSON.stringify(paymentData)
+            body: JSON.stringify(paymentData),
+            credentials: 'include'
           });
           
           const result = await response.json();
           
           if (response.ok) {
             // Payment successful
-            paymentMessage.textContent = "Payment successful! Redirecting to your account...";
+            let discountMsg = '';
+            if (result.discount && result.discount > 0) {
+              discountMsg = ` Discount applied: ${(result.discount * 100).toFixed(0)}% off.`;
+            }
+            paymentMessage.textContent = `Payment successful!${discountMsg} Redirecting to your account...`;
             paymentMessage.className = "message success";
             
-            // Vulnerable: Storing transaction details in localStorage
             localStorage.setItem('lastTransaction', JSON.stringify({
-              id: paymentData.transactionId,
-              amount: paymentData.amount,
+              id: result.transactionId, // Use result.transactionId from backend
+              amount: result.amount,
               boxType: paymentData.boxType,
               date: new Date().toISOString()
             }));
             
-            // Redirect after delay
             setTimeout(() => {
               window.location.href = "dashboard.html";
             }, 2000);
           } else {
-            // Payment failed
             paymentMessage.textContent = result.error || "Payment failed. Please try again.";
             paymentMessage.className = "message error";
           }
         } catch (error) {
           console.error("Payment error:", error);
-          
-          // Vulnerable: For demo purposes, allow offline payments to go through
           paymentMessage.textContent = "Network issue, but payment recorded locally. Redirecting...";
           paymentMessage.className = "message success";
-          
-          // Store transaction locally anyway
           localStorage.setItem('lastTransaction', JSON.stringify({
             id: paymentData.transactionId,
             amount: paymentData.amount,
@@ -386,7 +358,6 @@
             date: new Date().toISOString(),
             offline: true
           }));
-          
           setTimeout(() => {
             window.location.href = "dashboard.html";
           }, 2000);

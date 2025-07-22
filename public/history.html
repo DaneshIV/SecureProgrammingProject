@@ -106,18 +106,21 @@
       const messageDiv = document.getElementById('message');
       
       try {
-        // Get user email from localStorage (vulnerable)
-        const auth = JSON.parse(localStorage.getItem('auth'));
-        if (!auth || !auth.email) {
-          throw new Error('No user logged in');
+        const backendURL = 'http://localhost:3000';
+        // Fetch payment history using session (no email in query)
+        const response = await fetch(`${backendURL}/api/payment-history`, {
+          credentials: 'include'
+        });
+        
+        if (response.status === 401) {
+          messageDiv.textContent = "You are not logged in. Redirecting to login...";
+          messageDiv.className = "message error";
+          messageDiv.style.display = "block";
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 2000);
+          return;
         }
-        
-        // Vulnerable: Using email from localStorage without verification
-        const email = auth.email;
-        
-        // Vulnerable: Direct API call with email as a query parameter
-        const backendURL = 'https://83bc16e00594.ngrok-free.app';
-        const response = await fetch(`${backendURL}/api/payment-history?email=${email}`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch payment history');
@@ -147,40 +150,14 @@
         
       } catch (error) {
         console.error('Error loading payment history:', error);
-        
-        // Check if there's a last transaction in localStorage (vulnerable fallback)
-        const lastTx = localStorage.getItem('lastTransaction');
-        if (lastTx) {
-          try {
-            const tx = JSON.parse(lastTx);
-            historyTableBody.innerHTML = `
-              <tr>
-                <td>${new Date(tx.date).toLocaleString()}</td>
-                <td>${tx.boxType}</td>
-                <td>$${tx.amount.toFixed(2)}</td>
-                <td>Local transaction</td>
-                <td>${tx.id}</td>
-              </tr>
-            `;
-            
-            messageDiv.textContent = "Server unavailable. Showing local transaction data only.";
-            messageDiv.className = "message error";
-            messageDiv.style.display = "block";
-            
-          } catch (e) {
-            historyTableBody.innerHTML = `
-              <tr>
-                <td colspan="5" style="text-align: center;">Error loading payment history</td>
-              </tr>
-            `;
-          }
-        } else {
-          historyTableBody.innerHTML = `
-            <tr>
-              <td colspan="5" style="text-align: center;">Error loading payment history</td>
-            </tr>
-          `;
-        }
+        historyTableBody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center;">Error loading payment history</td>
+          </tr>
+        `;
+        messageDiv.textContent = "Server unavailable. Please try again later.";
+        messageDiv.className = "message error";
+        messageDiv.style.display = "block";
       }
     });
   </script>
